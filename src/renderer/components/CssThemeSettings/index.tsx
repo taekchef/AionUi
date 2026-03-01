@@ -37,6 +37,10 @@ const normalizeUserThemes = (themes: ICssTheme[]): { normalized: ICssTheme[]; up
   return { normalized, updated };
 };
 
+const dispatchCustomCssUpdated = (css: string) => {
+  window.dispatchEvent(new CustomEvent('custom-css-updated', { detail: { customCss: css } }));
+};
+
 /**
  * CSS 主题设置组件 / CSS Theme Settings Component
  * 用于管理和切换 CSS 皮肤主题 / For managing and switching CSS skin themes
@@ -70,9 +74,21 @@ const CssThemeSettings: React.FC = () => {
         // 合并预设主题和用户主题 / Merge preset themes with user themes
         const allThemes = [...normalizedPresets, ...normalized.filter((t) => !t.isPreset)];
 
+        const resolvedActiveId = activeId || DEFAULT_THEME_ID;
+        const activeTheme = allThemes.find((theme) => theme.id === resolvedActiveId);
+        const expectedCss = activeTheme?.css || '';
+
         setThemes(allThemes);
         // 如果没有保存的主题 ID，默认选择 default-theme / Default to default-theme if no saved theme ID
-        setActiveThemeId(activeId || DEFAULT_THEME_ID);
+        setActiveThemeId(resolvedActiveId);
+
+        // Self-heal potential split-brain state (activeThemeId != customCss) caused by partial IPC write failures.
+        const savedCustomCss = (await ConfigStorage.get('customCss')) || '';
+        if (savedCustomCss !== expectedCss) {
+          await ConfigStorage.set('customCss', expectedCss);
+        }
+        // Ensure current page visuals always align with the selected theme after loading settings.
+        dispatchCustomCssUpdated(expectedCss);
       } catch (error) {
         console.error('Failed to load CSS themes:', error);
       }
@@ -95,7 +111,7 @@ const CssThemeSettings: React.FC = () => {
 
         // Pessimistic UI Update - only updates if backend storage succeeded completely
         setActiveThemeId(themeId);
-        window.dispatchEvent(new CustomEvent('custom-css-updated', { detail: { customCss: css } }));
+        dispatchCustomCssUpdated(css);
       } catch (error) {
         console.error('Failed to apply theme (IPC/Storage Error). Initiating source-of-truth recovery:', error);
 
@@ -103,10 +119,10 @@ const CssThemeSettings: React.FC = () => {
         try {
           const realId = (await ConfigStorage.get('css.activeThemeId')) || DEFAULT_THEME_ID;
           const realCss = (await ConfigStorage.get('customCss')) || '';
-          
+
           // Unconditionally align UI state with the real storage state
           setActiveThemeId(realId);
-          window.dispatchEvent(new CustomEvent('custom-css-updated', { detail: { customCss: realCss } }));
+          dispatchCustomCssUpdated(realCss);
         } catch (syncError) {
           console.error('Fallback sync failed:', syncError);
         }
