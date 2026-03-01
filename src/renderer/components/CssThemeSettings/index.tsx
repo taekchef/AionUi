@@ -83,57 +83,56 @@ const CssThemeSettings: React.FC = () => {
   /**
    * 应用主题 CSS / Apply theme CSS
    */
-  // Mutex lock to prevent async interleaving on rapid clicks
-  const applyLock = React.useRef(false);
+  // Serial queue to process theme changes in strict order without drops
+  const applyQueue = React.useRef<Promise<void>>(Promise.resolve());
 
-  const applyThemeCss = useCallback(async (css: string, themeId: string) => {
-    if (applyLock.current) return;
-    applyLock.current = true;
-
-    // Get current ID and CSS for potential rollback
-    const prevThemeId = (await ConfigStorage.get('css.activeThemeId')) || '';
-    const prevCss = (await ConfigStorage.get('customCss')) || '';
-
-    try {
-      // Step 1: Write customCss
-      await ConfigStorage.set('customCss', css);
-
+  const applyThemeCss = useCallback((css: string, themeId: string) => {
+    const task = async () => {
+      let prevCss = '';
       try {
-        // Step 2: Write activeThemeId
-        await ConfigStorage.set('css.activeThemeId', themeId);
-      } catch (idError) {
-        // Rollback customCss
-        await ConfigStorage.set('customCss', prevCss).catch((e) => console.error('Rollback failed:', e));
-        throw idError;
-      }
+        prevCss = (await ConfigStorage.get('customCss')) || '';
 
-      // Pessimistic UI Update
-      setActiveThemeId(themeId);
-      window.dispatchEvent(new CustomEvent('custom-css-updated', { detail: { customCss: css } }));
-    } catch (error) {
-      console.error('Failed to apply theme, initiating recovery sync:', error);
-      // Fallback: sync both UI states from storage
-      try {
-         const realId = (await ConfigStorage.get('css.activeThemeId')) || DEFAULT_THEME_ID;
-         const realCss = (await ConfigStorage.get('customCss')) || '';
-         if (realId !== themeId) setActiveThemeId(realId);
-         window.dispatchEvent(new CustomEvent('custom-css-updated', { detail: { customCss: realCss } }));
-      } catch (syncError) {
-         console.error('Fallback sync failed:', syncError);
+        // Step 1: Write customCss
+        await ConfigStorage.set('customCss', css);
+
+        try {
+          // Step 2: Write activeThemeId
+          await ConfigStorage.set('css.activeThemeId', themeId);
+        } catch (idError) {
+          // Rollback customCss
+          await ConfigStorage.set('customCss', prevCss).catch((e) => console.error('Rollback failed:', e));
+          throw idError;
+        }
+
+        // Pessimistic UI Update
+        setActiveThemeId(themeId);
+        window.dispatchEvent(new CustomEvent('custom-css-updated', { detail: { customCss: css } }));
+      } catch (error) {
+        console.error('Failed to apply theme, initiating recovery sync:', error);
+        // Fallback: sync both UI states from storage
+        try {
+          const realId = (await ConfigStorage.get('css.activeThemeId')) || DEFAULT_THEME_ID;
+          const realCss = (await ConfigStorage.get('customCss')) || '';
+          if (realId !== themeId) setActiveThemeId(realId);
+          window.dispatchEvent(new CustomEvent('custom-css-updated', { detail: { customCss: realCss } }));
+        } catch (syncError) {
+          console.error('Fallback sync failed:', syncError);
+        }
+        throw error;
       }
-      throw error;
-    } finally {
-      applyLock.current = false;
-    }
+    };
+
+    // Chain the task to the queue and update the queue reference
+    applyQueue.current = applyQueue.current.then(task, task);
+    return applyQueue.current;
   }, []);
   /**
    * 选择主题 / Select theme
    */
   const handleSelectTheme = useCallback(
     async (theme: ICssTheme) => {
-      if (applyLock.current) return;
       try {
-        // 使用强一致性的写入函数 / Use strongly consistent write function
+        // Use strongly consistent, queued write function
         await applyThemeCss(theme.css, theme.id);
         Message.success(t('settings.cssTheme.applied', { name: theme.name }));
       } catch (error) {
