@@ -83,11 +83,9 @@ const CssThemeSettings: React.FC = () => {
   /**
    * 应用主题 CSS / Apply theme CSS
    */
-  const applyThemeCss = useCallback((css: string) => {
+  const applyThemeCss = useCallback(async (css: string) => {
     // 更新 customCss 存储并触发事件 / Update customCss storage and dispatch event
-    void ConfigStorage.set('customCss', css).catch((err) => {
-      console.error('Failed to save custom CSS:', err);
-    });
+    await ConfigStorage.set('customCss', css);
     window.dispatchEvent(
       new CustomEvent('custom-css-updated', {
         detail: { customCss: css },
@@ -102,8 +100,7 @@ const CssThemeSettings: React.FC = () => {
     async (theme: ICssTheme) => {
       try {
         setActiveThemeId(theme.id);
-        await ConfigStorage.set('css.activeThemeId', theme.id);
-        applyThemeCss(theme.css);
+        await Promise.all([ConfigStorage.set('css.activeThemeId', theme.id), applyThemeCss(theme.css)]);
         Message.success(t('settings.cssTheme.applied', { name: theme.name }));
       } catch (error) {
         console.error('Failed to apply theme:', error);
@@ -188,9 +185,8 @@ const CssThemeSettings: React.FC = () => {
 
             // 如果删除的是当前激活主题，清除激活状态 / If deleting active theme, clear active state
             if (activeThemeId === themeId) {
-              await ConfigStorage.set('css.activeThemeId', '');
               setActiveThemeId('');
-              applyThemeCss('');
+              await Promise.all([ConfigStorage.set('css.activeThemeId', ''), applyThemeCss('')]);
             }
 
             setThemes(updatedThemes);
