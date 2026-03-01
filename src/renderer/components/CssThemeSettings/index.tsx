@@ -83,31 +83,58 @@ const CssThemeSettings: React.FC = () => {
   /**
    * 应用主题 CSS / Apply theme CSS
    */
-  const applyThemeCss = useCallback(async (css: string) => {
-    // 更新 customCss 存储并触发事件 / Update customCss storage and dispatch event
-    await ConfigStorage.set('customCss', css);
-    window.dispatchEvent(
-      new CustomEvent('custom-css-updated', {
-        detail: { customCss: css },
-      })
-    );
-  }, []);
+  const applyThemeCss = useCallback(async (css: string, themeId: string) => {
+    // 获取当前的主题 ID 和 CSS 用于可能的失败回滚 / Get current ID and CSS for potential rollback
+    const prevThemeId = (await ConfigStorage.get('css.activeThemeId')) || '';
+    const prevCss = (await ConfigStorage.get('customCss')) || '';
 
+    try {
+      // 第一步：写入 customCss（实际生效的 CSS） / Step 1: Write customCss (the actual CSS that applies)
+      await ConfigStorage.set('customCss', css);
+
+      try {
+        // 第二步：写入 activeThemeId（UI 选中的状态） / Step 2: Write activeThemeId (UI selected state)
+        await ConfigStorage.set('css.activeThemeId', themeId);
+      } catch (idError) {
+        // 如果第二步失败，回滚第一步，保证原子性 / If step 2 fails, rollback step 1 to ensure atomicity
+        await ConfigStorage.set('customCss', prevCss).catch((e) => console.error('Rollback failed:', e));
+        throw idError;
+      }
+
+      // 所有后端存储成功后，再更新前端状态 (Pessimistic UI Update)
+      setActiveThemeId(themeId);
+
+      // 触发界面重绘事件 / Dispatch event to update actual DOM
+      window.dispatchEvent(
+        new CustomEvent('custom-css-updated', {
+          detail: { customCss: css },
+        })
+      );
+    } catch (error) {
+      // 重新抛出错误给调用方处理 / Rethrow to caller
+      throw error;
+    }
+  }, []);
   /**
    * 选择主题 / Select theme
    */
   const handleSelectTheme = useCallback(
     async (theme: ICssTheme) => {
       try {
-        setActiveThemeId(theme.id);
-        await Promise.all([ConfigStorage.set('css.activeThemeId', theme.id), applyThemeCss(theme.css)]);
+        // 使用强一致性的写入函数 / Use strongly consistent write function
+        await applyThemeCss(theme.css, theme.id);
         Message.success(t('settings.cssTheme.applied', { name: theme.name }));
       } catch (error) {
         console.error('Failed to apply theme:', error);
         Message.error(t('settings.cssTheme.applyFailed'));
+        // 如果失败，强制重刷一次当前状态防漂移 / Force refresh state to prevent drift on failure
+        const currentId = await ConfigStorage.get('css.activeThemeId');
+        if (currentId !== activeThemeId) {
+          setActiveThemeId(currentId || DEFAULT_THEME_ID);
+        }
       }
     },
-    [applyThemeCss, t]
+    [applyThemeCss, activeThemeId, t]
   );
 
   /**
@@ -185,8 +212,8 @@ const CssThemeSettings: React.FC = () => {
 
             // 如果删除的是当前激活主题，清除激活状态 / If deleting active theme, clear active state
             if (activeThemeId === themeId) {
-              setActiveThemeId('');
-              await Promise.all([ConfigStorage.set('css.activeThemeId', ''), applyThemeCss('')]);
+              // 删除操作也使用强一致性的状态重置 / Use strongly consistent state reset for delete too
+              await applyThemeCss('', '');
             }
 
             setThemes(updatedThemes);
