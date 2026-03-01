@@ -89,22 +89,23 @@ const CssThemeSettings: React.FC = () => {
   const applyThemeCss = useCallback((css: string, themeId: string) => {
     const task = async () => {
       try {
-        // ULTIMATE ATOMICITY: Write both values in a single transaction-like payload
-        // Note: For backwards compatibility, we write to individual keys, but using a single combined IPC call
-        // If IPC is down, both fail. If IPC is up, both succeed. LevelDB batches these inside the main process.
+        // Queued Concurrent Writes: Not strictly atomic, but eliminates client-side async interleaving.
+        // True atomicity would require a single RPC/key batch in the main process.
         await Promise.all([ConfigStorage.set('customCss', css), ConfigStorage.set('css.activeThemeId', themeId)]);
 
         // Pessimistic UI Update - only updates if backend storage succeeded completely
         setActiveThemeId(themeId);
         window.dispatchEvent(new CustomEvent('custom-css-updated', { detail: { customCss: css } }));
       } catch (error) {
-        console.error('Failed to apply theme (IPC/Storage Error). State preserved:', error);
+        console.error('Failed to apply theme (IPC/Storage Error). Initiating source-of-truth recovery:', error);
 
-        // Recover state from what is actually in storage
+        // Recover state unconditionally from what is actually in storage
         try {
           const realId = (await ConfigStorage.get('css.activeThemeId')) || DEFAULT_THEME_ID;
           const realCss = (await ConfigStorage.get('customCss')) || '';
-          if (realId !== themeId) setActiveThemeId(realId);
+          
+          // Unconditionally align UI state with the real storage state
+          setActiveThemeId(realId);
           window.dispatchEvent(new CustomEvent('custom-css-updated', { detail: { customCss: realCss } }));
         } catch (syncError) {
           console.error('Fallback sync failed:', syncError);
@@ -122,7 +123,7 @@ const CssThemeSettings: React.FC = () => {
   const handleSelectTheme = useCallback(
     async (theme: ICssTheme) => {
       try {
-        // Use strongly consistent, queued write function
+        // Use queued, best-effort write function
         await applyThemeCss(theme.css, theme.id);
         Message.success(t('settings.cssTheme.applied', { name: theme.name }));
       } catch (error) {
