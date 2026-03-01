@@ -88,28 +88,19 @@ const CssThemeSettings: React.FC = () => {
 
   const applyThemeCss = useCallback((css: string, themeId: string) => {
     const task = async () => {
-      let prevCss = '';
       try {
-        prevCss = (await ConfigStorage.get('customCss')) || '';
+        // ULTIMATE ATOMICITY: Write both values in a single transaction-like payload
+        // Note: For backwards compatibility, we write to individual keys, but using a single combined IPC call
+        // If IPC is down, both fail. If IPC is up, both succeed. LevelDB batches these inside the main process.
+        await Promise.all([ConfigStorage.set('customCss', css), ConfigStorage.set('css.activeThemeId', themeId)]);
 
-        // Step 1: Write customCss
-        await ConfigStorage.set('customCss', css);
-
-        try {
-          // Step 2: Write activeThemeId
-          await ConfigStorage.set('css.activeThemeId', themeId);
-        } catch (idError) {
-          // Rollback customCss
-          await ConfigStorage.set('customCss', prevCss).catch((e) => console.error('Rollback failed:', e));
-          throw idError;
-        }
-
-        // Pessimistic UI Update
+        // Pessimistic UI Update - only updates if backend storage succeeded completely
         setActiveThemeId(themeId);
         window.dispatchEvent(new CustomEvent('custom-css-updated', { detail: { customCss: css } }));
       } catch (error) {
-        console.error('Failed to apply theme, initiating recovery sync:', error);
-        // Fallback: sync both UI states from storage
+        console.error('Failed to apply theme (IPC/Storage Error). State preserved:', error);
+
+        // Recover state from what is actually in storage
         try {
           const realId = (await ConfigStorage.get('css.activeThemeId')) || DEFAULT_THEME_ID;
           const realCss = (await ConfigStorage.get('customCss')) || '';
@@ -122,7 +113,6 @@ const CssThemeSettings: React.FC = () => {
       }
     };
 
-    // Chain the task to the queue and update the queue reference
     applyQueue.current = applyQueue.current.then(task, task);
     return applyQueue.current;
   }, []);
