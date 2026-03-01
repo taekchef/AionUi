@@ -82,19 +82,31 @@ const CssThemeSettings: React.FC = () => {
 
   /**
    * 应用主题 CSS / Apply theme CSS
+   * @param themeId - 主题ID / Theme ID
+   * @param css - CSS 代码 / CSS code
    */
-  const applyThemeCss = useCallback((css: string) => {
-    // 更新 customCss 存储并触发事件 / Update customCss storage and dispatch event
-    void ConfigStorage.set('customCss', css).catch((err) => {
-      console.error('Failed to save custom CSS:', err);
-    });
-    window.dispatchEvent(
-      new CustomEvent('custom-css-updated', {
-        detail: { customCss: css },
-      })
-    );
+  const applyThemeCss = useCallback(async (themeId: string, css: string) => {
+    // 同时更新 activeThemeId 和 customCss，确保状态一致性
+    // Update both activeThemeId and customCss atomically to ensure state consistency
+    try {
+      await Promise.all([
+        ConfigStorage.set('css.activeThemeId', themeId),
+        ConfigStorage.set('customCss', css),
+      ]);
+      window.dispatchEvent(
+        new CustomEvent('custom-css-updated', {
+          detail: { customCss: css },
+        })
+      );
+    } catch (err) {
+      console.error('Failed to save theme state:', err);
+      throw err;
+    }
   }, []);
 
+  /**
+   * 选择主题 / Select theme
+   */
   /**
    * 选择主题 / Select theme
    */
@@ -102,8 +114,7 @@ const CssThemeSettings: React.FC = () => {
     async (theme: ICssTheme) => {
       try {
         setActiveThemeId(theme.id);
-        await ConfigStorage.set('css.activeThemeId', theme.id);
-        applyThemeCss(theme.css);
+        await applyThemeCss(theme.id, theme.css);
         Message.success(t('settings.cssTheme.applied', { name: theme.name }));
       } catch (error) {
         console.error('Failed to apply theme:', error);
@@ -190,7 +201,7 @@ const CssThemeSettings: React.FC = () => {
             if (activeThemeId === themeId) {
               await ConfigStorage.set('css.activeThemeId', '');
               setActiveThemeId('');
-              applyThemeCss('');
+              await applyThemeCss('', '');
             }
 
             setThemes(updatedThemes);
