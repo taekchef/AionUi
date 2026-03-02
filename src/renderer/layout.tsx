@@ -21,7 +21,7 @@ import { processCustomCss } from './utils/customCssProcessor';
 import UpdateModal from '@/renderer/components/UpdateModal';
 import { cleanupSiderTooltips } from './utils/siderTooltip';
 import { isElectronDesktop } from './utils/platform';
-import { DEFAULT_THEME_ID, PRESET_THEMES } from '@/renderer/components/CssThemeSettings/presets';
+import { computeCssSyncDecision } from './utils/themeCssSync';
 
 const useDebug = () => {
   const [count, setCount] = useState(0);
@@ -57,12 +57,6 @@ const DEFAULT_SIDER_WIDTH = 250;
 const MOBILE_SIDER_WIDTH_RATIO = 0.67;
 const MOBILE_SIDER_MIN_WIDTH = 260;
 const MOBILE_SIDER_MAX_WIDTH = 420;
-
-const resolveCssByActiveTheme = (activeThemeId: string, userThemes: ICssTheme[]): string => {
-  const allThemes = [...PRESET_THEMES, ...(userThemes || [])];
-  const resolvedId = activeThemeId || DEFAULT_THEME_ID;
-  return allThemes.find((theme) => theme.id === resolvedId)?.css || '';
-};
 
 const detectMobileViewportOrTouch = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -101,21 +95,23 @@ const Layout: React.FC<{
     try {
       const [savedCssRaw, activeThemeId, savedThemes] = await Promise.all([ConfigStorage.get('customCss'), ConfigStorage.get('css.activeThemeId'), ConfigStorage.get('css.themes')]);
 
-      const savedCss = savedCssRaw || '';
-      const expectedCss = resolveCssByActiveTheme(activeThemeId || '', (savedThemes || []) as ICssTheme[]);
+      const decision = computeCssSyncDecision({
+        savedCss: savedCssRaw || '',
+        activeThemeId: activeThemeId || '',
+        savedThemes: (savedThemes || []) as ICssTheme[],
+        currentUiCss: customCss,
+        lastUiCssUpdateAt: lastUiCssUpdateAtRef.current,
+      });
 
-      let effectiveCss = savedCss;
-      if (Boolean(activeThemeId) && savedCss !== expectedCss) {
-        effectiveCss = expectedCss;
-        await ConfigStorage.set('customCss', expectedCss).catch((error) => {
+      if (decision.shouldSkipApply) {
+        return;
+      }
+
+      const effectiveCss = decision.effectiveCss;
+      if (decision.shouldHealStorage) {
+        await ConfigStorage.set('customCss', effectiveCss).catch((error) => {
           console.warn('Failed to heal custom CSS from active theme:', error);
         });
-      } else {
-        // Guard against stale storage reads right after user selected a new theme.
-        const recentUiUpdate = Date.now() - lastUiCssUpdateAtRef.current < 2000;
-        if (recentUiUpdate && customCss && savedCss !== customCss) {
-          return;
-        }
       }
 
       setCustomCss(effectiveCss);
