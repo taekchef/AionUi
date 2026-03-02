@@ -95,17 +95,26 @@ const Layout: React.FC<{
   const workspaceAvailable = location.pathname.startsWith('/conversation/');
   const collapsedRef = useRef(collapsed);
   const lastCssRef = useRef('');
+  const lastUiCssUpdateAtRef = useRef(0);
 
   const loadAndHealCustomCss = useCallback(async () => {
     try {
-      const [savedCss, activeThemeId, savedThemes] = await Promise.all([ConfigStorage.get('customCss'), ConfigStorage.get('css.activeThemeId'), ConfigStorage.get('css.themes')]);
+      const [savedCssRaw, activeThemeId, savedThemes] = await Promise.all([ConfigStorage.get('customCss'), ConfigStorage.get('css.activeThemeId'), ConfigStorage.get('css.themes')]);
 
-      let effectiveCss = savedCss || '';
-      if (!effectiveCss) {
-        const recoveredCss = resolveCssByActiveTheme(activeThemeId || '', (savedThemes || []) as ICssTheme[]);
-        if (recoveredCss) {
-          await ConfigStorage.set('customCss', recoveredCss);
-          effectiveCss = recoveredCss;
+      const savedCss = savedCssRaw || '';
+      const expectedCss = resolveCssByActiveTheme(activeThemeId || '', (savedThemes || []) as ICssTheme[]);
+
+      let effectiveCss = savedCss;
+      if (activeThemeId !== null && activeThemeId !== undefined && savedCss !== expectedCss) {
+        effectiveCss = expectedCss;
+        await ConfigStorage.set('customCss', expectedCss).catch((error) => {
+          console.warn('Failed to heal custom CSS from active theme:', error);
+        });
+      } else {
+        // Guard against stale storage reads right after user selected a new theme.
+        const recentUiUpdate = Date.now() - lastUiCssUpdateAtRef.current < 2000;
+        if (recentUiUpdate && customCss && savedCss !== customCss) {
+          return;
         }
       }
 
@@ -117,7 +126,7 @@ const Layout: React.FC<{
     } catch (error) {
       console.error('Failed to load or heal custom CSS:', error);
     }
-  }, []);
+  }, [customCss]);
 
   // 加载并监听自定义 CSS 配置 / Load & watch custom CSS configuration
   useEffect(() => {
@@ -127,6 +136,7 @@ const Layout: React.FC<{
       if (event.detail?.customCss !== undefined) {
         const css = event.detail.customCss || '';
         lastCssRef.current = css;
+        lastUiCssUpdateAtRef.current = Date.now();
         setCustomCss(css);
       }
     };
