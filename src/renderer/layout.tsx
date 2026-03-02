@@ -105,7 +105,7 @@ const Layout: React.FC<{
       const expectedCss = resolveCssByActiveTheme(activeThemeId || '', (savedThemes || []) as ICssTheme[]);
 
       let effectiveCss = savedCss;
-      if (activeThemeId !== null && activeThemeId !== undefined && savedCss !== expectedCss) {
+      if (Boolean(activeThemeId) && savedCss !== expectedCss) {
         effectiveCss = expectedCss;
         await ConfigStorage.set('customCss', expectedCss).catch((error) => {
           console.warn('Failed to heal custom CSS from active theme:', error);
