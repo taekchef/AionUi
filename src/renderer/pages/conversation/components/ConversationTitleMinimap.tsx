@@ -26,6 +26,7 @@ interface TurnPreviewItem {
 }
 
 const MAX_LINE_LEN = 92;
+const PANEL_WIDTH = 420;
 
 const isTextMessage = (message: TMessage): message is IMessageText => {
   return message.type === 'text' && typeof message.content?.content === 'string';
@@ -125,31 +126,58 @@ const ConversationTitleMinimap: React.FC<ConversationTitleMinimapProps> = ({ tit
   const contentNode = useMemo(() => {
     if (loading) {
       return (
-        <div className='w-360px h-180px flex-center'>
-          <Spin />
+        <div
+          className='flex-center'
+          style={{
+            width: `${PANEL_WIDTH}px`,
+            maxWidth: '72vw',
+            height: '180px',
+            borderRadius: '12px',
+            background: 'var(--color-bg-5)',
+          }}
+        >
+          <Spin size={18} />
         </div>
       );
     }
 
     if (!items.length) {
       return (
-        <div className='w-360px p-12px'>
+        <div
+          className='p-12px'
+          style={{
+            width: `${PANEL_WIDTH}px`,
+            maxWidth: '72vw',
+            borderRadius: '12px',
+            background: 'var(--color-bg-5)',
+          }}
+        >
           <Empty description={t('conversation.minimap.empty', { defaultValue: 'No Q&A turns yet' })} />
         </div>
       );
     }
 
     return (
-      <div className='w-420px max-w-[72vw] max-h-420px flex flex-col'>
-        <div className='px-12px py-8px border-b border-solid border-[var(--color-border-2)] text-12px text-t-secondary'>
+      <div
+        className='flex flex-col overflow-hidden'
+        style={{
+          width: `${PANEL_WIDTH}px`,
+          maxWidth: '72vw',
+          maxHeight: '420px',
+          borderRadius: '12px',
+          background: 'var(--color-bg-5)',
+          border: '1px solid var(--color-border-2)',
+        }}
+      >
+        <div className='px-12px py-8px border-b border-solid border-[var(--color-border-2)] text-12px text-t-secondary bg-[var(--color-bg-5)]'>
           {t('conversation.minimap.title', { defaultValue: 'Conversation Minimap' })} · {items.length}
         </div>
-        <div className='overflow-y-auto py-6px'>
+        <div className='overflow-y-auto py-6px bg-[var(--color-bg-5)]'>
           {items.map((item) => (
             <button
               key={`${item.index}-${item.messageId || item.msgId || 'unknown'}`}
               type='button'
-              className='w-full text-left px-12px py-8px border-none bg-transparent hover:bg-fill-2 transition-colors cursor-pointer'
+              className='w-full text-left px-12px py-8px border-none bg-transparent hover:bg-fill-2 transition-colors cursor-pointer block'
               onClick={() => {
                 if (!conversationId) return;
                 dispatchChatMessageJump({
@@ -173,7 +201,7 @@ const ConversationTitleMinimap: React.FC<ConversationTitleMinimapProps> = ({ tit
   }, [conversationId, items, loading, t]);
 
   return (
-    <Popover trigger='hover' position='bottom' content={contentNode} popupVisible={visible} onVisibleChange={handleVisibleChange} unmountOnExit popupHoverStay>
+    <Popover trigger='hover' position='bottom' content={contentNode} popupVisible={visible} onVisibleChange={handleVisibleChange} unmountOnExit popupHoverStay popupStyle={{ padding: 0, width: 'max-content', maxWidth: '72vw' }}>
       <span className={classNames('font-bold text-16px text-t-primary inline-block overflow-hidden text-ellipsis whitespace-nowrap max-w-full cursor-pointer', visible && 'text-[rgb(var(--primary-6))]')}>{title}</span>
     </Popover>
   );
