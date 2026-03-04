@@ -102,7 +102,6 @@ const GeminiModalContent: React.FC = () => {
       const geminiConfig = toGeminiConfig(restConfig, accountProjects);
 
       await ConfigStorage.set('gemini.config', geminiConfig);
-
     } catch (error: unknown) {
       console.error('[GeminiSettings] Auto-save failed:', error);
     }

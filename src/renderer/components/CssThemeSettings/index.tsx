@@ -89,10 +89,7 @@ const CssThemeSettings: React.FC = () => {
     // 同时更新 activeThemeId 和 customCss，确保状态一致性
     // Update both activeThemeId and customCss atomically to ensure state consistency
     try {
-      await Promise.all([
-        ConfigStorage.set('css.activeThemeId', themeId),
-        ConfigStorage.set('customCss', css),
-      ]);
+      await Promise.all([ConfigStorage.set('css.activeThemeId', themeId), ConfigStorage.set('customCss', css)]);
       window.dispatchEvent(
         new CustomEvent('custom-css-updated', {
           detail: { customCss: css },
