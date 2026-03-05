@@ -1,0 +1,213 @@
+/*
+ * Theme Variables — Non-color CSS custom properties for AionUI theming
+ *
+ * These variables extend the color system (defined in color-schemes/default.css)
+ * with shape, typography, motion, and effect controls.
+ *
+ * DRAFT: Default values preserve existing behavior. Frontend team may adjust.
+ *
+ * Usage: Override these in theme CSS to change component shape/motion/effects.
+ * Example:
+ *   :root {
+ *     --theme-border-radius-input: 16px;
+ *     --theme-font-family: "Varela Round", sans-serif;
+ *     --theme-backdrop-blur: 8px;
+ *   }
+ */
+
+/* ========================================================================= */
+/* Light Mode Defaults                                                        */
+/* ========================================================================= */
+
+:root {
+
+  /* ----- Shape & Border Radius ----- */
+
+  /* Message bubble radius (asymmetric for speech-bubble shape) */
+  --theme-border-radius-bubble-user: 12px 12px 4px 12px;
+  --theme-border-radius-bubble-ai: 12px 12px 12px 4px;
+
+  /* Component radius */
+  --theme-border-radius-input: 8px;
+  --theme-border-radius-button: 8px;
+  --theme-border-radius-tooltip: 8px;
+
+  /* ----- Typography ----- */
+
+  --theme-font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Hiragino Sans GB", "noto sans", "Microsoft YaHei", "Helvetica Neue",
+    Helvetica, Arial, sans-serif;
+  --theme-button-font-weight: 500;
+
+  /* ----- Motion ----- */
+
+  --theme-transition-duration: 0.2s;
+  --theme-transition-timing: ease;
+
+  /* ----- Scrollbar ----- */
+
+  --theme-scrollbar-width: 8px;
+  --theme-scrollbar-radius: 4px;
+
+  /* ----- Effects ----- */
+
+  --theme-backdrop-blur: 0px;
+  --theme-button-hover-lift: 0px;
+  --theme-icon-hover-scale: 1;
+
+  /* ----- Shadows (Soft Float preset — default) ----- */
+
+  --theme-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --theme-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --theme-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
+  --theme-shadow-glow: none;
+
+  /* ----- Gradients ----- */
+
+  --theme-gradient-primary: none;
+  --theme-gradient-primary-hover: none;
+}
+
+
+/* ========================================================================= */
+/* Dark Mode Defaults                                                         */
+/* ========================================================================= */
+
+[data-theme='dark'] {
+
+  /* Shadows — deeper in dark mode for visibility */
+  --theme-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.24);
+  --theme-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.32);
+  --theme-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+
+/* ========================================================================= */
+/* Shadow Preset Packages                                                     */
+/* Apply via data attribute: <html data-shadow-preset="3d-classic">           */
+/* Or override individual --theme-shadow-* variables in theme CSS             */
+/* ========================================================================= */
+
+/* --- Soft Float (default — no data attribute needed) --- */
+/* Already defined in :root above */
+
+/* --- 3D Classic (Windows 95 / retro look) --- */
+[data-shadow-preset='3d-classic'] {
+  --theme-shadow-sm: inset 1px 1px 0 rgba(255, 255, 255, 0.3),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+  --theme-shadow-md: inset 1px 1px 0 rgba(255, 255, 255, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+  --theme-shadow-lg: inset 1px 1px 0 rgba(255, 255, 255, 0.8),
+    0 4px 8px rgba(0, 0, 0, 0.4);
+  --theme-shadow-glow: none;
+}
+
+[data-theme='dark'][data-shadow-preset='3d-classic'] {
+  --theme-shadow-sm: inset 1px 1px 0 rgba(255, 255, 255, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --theme-shadow-md: inset 1px 1px 0 rgba(255, 255, 255, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+  --theme-shadow-lg: inset 1px 1px 0 rgba(255, 255, 255, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.6);
+  --theme-shadow-glow: none;
+}
+
+/* --- Neon Glow (cyberpunk / gaming aesthetic) --- */
+/* Uses --primary-rgb for colored glow. Themes must define --primary-rgb. */
+[data-shadow-preset='neon-glow'] {
+  --theme-shadow-sm: 0 0 8px rgba(var(--primary-rgb, 22, 93, 255), 0.3);
+  --theme-shadow-md: 0 0 16px rgba(var(--primary-rgb, 22, 93, 255), 0.4);
+  --theme-shadow-lg: 0 0 24px rgba(var(--primary-rgb, 22, 93, 255), 0.5);
+  --theme-shadow-glow: 0 0 12px rgba(var(--primary-rgb, 22, 93, 255), 0.6);
+}
+
+[data-theme='dark'][data-shadow-preset='neon-glow'] {
+  --theme-shadow-sm: 0 0 10px rgba(var(--primary-rgb, 22, 93, 255), 0.4);
+  --theme-shadow-md: 0 0 20px rgba(var(--primary-rgb, 22, 93, 255), 0.5);
+  --theme-shadow-lg: 0 0 30px rgba(var(--primary-rgb, 22, 93, 255), 0.6);
+  --theme-shadow-glow: 0 0 16px rgba(var(--primary-rgb, 22, 93, 255), 0.8);
+}
+
+/* --- None (flat / minimal design) --- */
+[data-shadow-preset='none'] {
+  --theme-shadow-sm: none;
+  --theme-shadow-md: none;
+  --theme-shadow-lg: none;
+  --theme-shadow-glow: none;
+}
+
+
+/* ========================================================================= */
+/* Variable Application Rules                                                 */
+/* These rules connect the new --theme-* variables to actual components.      */
+/* ========================================================================= */
+
+/* ----- Font Family ----- */
+body {
+  font-family: var(--theme-font-family);
+}
+
+/* ----- Message Bubbles ----- */
+.message-item.user .message-bubble,
+[class*="message"][class*="user"] .message-content {
+  border-radius: var(--theme-border-radius-bubble-user);
+}
+
+.message-item.ai .message-bubble,
+[class*="message"][class*="ai"] .message-content,
+[class*="message"][class*="assistant"] .message-content {
+  border-radius: var(--theme-border-radius-bubble-ai);
+}
+
+/* ----- Input / Sendbox ----- */
+.guidInputCard,
+.sendbox-container:not([class*="model"]):not([class*="Model"]),
+[class*="sendbox"]:not([class*="input"]):not([class*="textarea"]):not([class*="model"]):not([class*="tools"]) {
+  border-radius: var(--theme-border-radius-input);
+  backdrop-filter: blur(var(--theme-backdrop-blur));
+  transition: all var(--theme-transition-duration) var(--theme-transition-timing);
+}
+
+/* ----- Buttons ----- */
+.arco-btn-primary:not([class*="icon"]):not([class*="circle"]):not([class*="model"]),
+button[type="primary"]:not([class*="icon"]):not([class*="circle"]):not([class*="model"]) {
+  border-radius: var(--theme-border-radius-button);
+  font-weight: var(--theme-button-font-weight);
+  transition: all var(--theme-transition-duration) var(--theme-transition-timing);
+}
+
+.arco-btn-primary:hover:not([class*="icon"]):not([class*="circle"]):not([class*="model"]),
+button[type="primary"]:hover:not([class*="icon"]):not([class*="circle"]):not([class*="model"]) {
+  transform: translateY(calc(-1 * var(--theme-button-hover-lift)));
+}
+
+/* ----- Tooltips & Popovers ----- */
+.arco-tooltip-inner,
+.arco-popover-inner,
+.arco-popover-content {
+  border-radius: var(--theme-border-radius-tooltip);
+}
+
+/* ----- Scrollbar ----- */
+::-webkit-scrollbar {
+  width: var(--theme-scrollbar-width);
+  height: var(--theme-scrollbar-width);
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: var(--theme-scrollbar-radius);
+}
+
+::-webkit-scrollbar-track {
+  border-radius: var(--theme-scrollbar-radius);
+}
+
+/* ----- Icon Hover ----- */
+svg:not([class*="model"] svg):hover {
+  transform: scale(var(--theme-icon-hover-scale));
+}
+
+/* ----- Modal / Dialog Backdrop ----- */
+.arco-modal-body {
+  backdrop-filter: blur(var(--theme-backdrop-blur));
+}
