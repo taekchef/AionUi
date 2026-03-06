@@ -4,6 +4,11 @@
  * These variables extend the color system (defined in color-schemes/default.css)
  * with shape, typography, motion, and effect controls.
  *
+ * STATUS: Not yet imported into theme entry point (index.css).
+ * This file is consumed by the CSS Theme Designer only.
+ * It will be integrated into the main theme pipeline after Phase 2 UI
+ * is validated and the frontend team approves the variable names.
+ *
  * DRAFT: Default values preserve existing behavior. Frontend team may adjust.
  *
  * Usage: Override these in theme CSS to change component shape/motion/effects.
@@ -203,7 +208,8 @@ button[type="primary"]:hover:not([class*="icon"]):not([class*="circle"]):not([cl
 }
 
 /* ----- Icon Hover ----- */
-svg:not([class*="model"] svg):hover {
+/* Scoped to theme-designer preview only to avoid unintended global side effects */
+.theme-preview svg:hover {
   transform: scale(var(--theme-icon-hover-scale));
 }
 

@@ -103,7 +103,8 @@ export function rgbToHsl(rgb: RGB): HSL {
 
 /** Convert HSL to RGB */
 export function hslToRgb(hsl: HSL): RGB {
-  const h = hsl.h;
+  // Normalize hue to [0, 360) to handle h=360, negative values, etc.
+  const h = ((hsl.h % 360) + 360) % 360;
   const s = hsl.s / 100;
   const l = hsl.l / 100;
 
@@ -287,10 +288,14 @@ export function computeLightFromDark(
 
   switch (strategy) {
     case 'invertLightness':
-      // invertLightness is self-inverse (applying twice returns to original)
-      result = invertLightness(hsl, params);
-      // Restore saturation (reverse the 0.9 factor)
-      result.s = clamp(result.s / 0.9, 0, 100);
+      // Forward: s' = s * 0.9, l' = 100 - l
+      // Reverse: s = s' / 0.9, l = 100 - l'
+      // (Do NOT call invertLightness again — it would double the saturation reduction)
+      result = {
+        h: hsl.h,
+        s: clamp(hsl.s / 0.9, 0, 100),
+        l: clamp(100 - hsl.l, 0, 100),
+      };
       break;
 
     case 'shiftLightness': {

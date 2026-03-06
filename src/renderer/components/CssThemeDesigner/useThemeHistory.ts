@@ -49,26 +49,37 @@ export function useThemeHistory(initialState: ThemeHistoryState) {
     future: [],
   });
 
-  // Track whether we're in a batch operation
+  // Track whether we're in a batch operation.
+  // Uses a ref + synchronous snapshot to avoid React async setState timing issues.
   const batchRef = useRef(false);
   const batchStartStateRef = useRef<ThemeHistoryState | null>(null);
+
+  // Keep a synchronous mirror of present state for startBatch to read.
+  // Updated in every setHistory call via the updater pattern.
+  const presentRef = useRef<ThemeHistoryState>(initialState);
 
   /** Push current state to history and set new present */
   const pushState = useCallback((newState: ThemeHistoryState) => {
     if (batchRef.current) {
       // During batch: update present without pushing to past
-      setHistory((prev) => ({
-        ...prev,
-        present: newState,
-      }));
+      setHistory((prev) => {
+        presentRef.current = newState;
+        return {
+          ...prev,
+          present: newState,
+        };
+      });
       return;
     }
 
-    setHistory((prev) => ({
-      past: [...prev.past, prev.present].slice(-MAX_HISTORY),
-      present: newState,
-      future: [], // Clear redo stack on new action
-    }));
+    setHistory((prev) => {
+      presentRef.current = newState;
+      return {
+        past: [...prev.past, prev.present].slice(-MAX_HISTORY),
+        present: newState,
+        future: [], // Clear redo stack on new action
+      };
+    });
   }, []);
 
   /** Undo: pop from past, push current to future */
@@ -77,6 +88,7 @@ export function useThemeHistory(initialState: ThemeHistoryState) {
       if (prev.past.length === 0) return prev;
       const newPast = [...prev.past];
       const previousState = newPast.pop()!;
+      presentRef.current = previousState;
       return {
         past: newPast,
         present: previousState,
@@ -91,6 +103,7 @@ export function useThemeHistory(initialState: ThemeHistoryState) {
       if (prev.future.length === 0) return prev;
       const newFuture = [...prev.future];
       const nextState = newFuture.shift()!;
+      presentRef.current = nextState;
       return {
         past: [...prev.past, prev.present],
         present: nextState,
@@ -103,16 +116,24 @@ export function useThemeHistory(initialState: ThemeHistoryState) {
    * Start a batch operation.
    * All pushState calls until endBatch() are treated as one undo step.
    * Use for preset application, sync operations, etc.
+   *
+   * The batch start state is captured synchronously from presentRef
+   * so that immediate pushState calls in the same tick work correctly.
    */
   const startBatch = useCallback(() => {
+    if (batchRef.current) {
+      // Already in a batch — don't nest, just continue
+      return;
+    }
     batchRef.current = true;
-    setHistory((prev) => {
-      batchStartStateRef.current = prev.present;
-      return prev;
-    });
+    // Synchronous read — no React setState timing issue
+    batchStartStateRef.current = presentRef.current;
   }, []);
 
-  /** End a batch operation. Pushes the batch start state to past. */
+  /**
+   * End a batch operation. Pushes the batch start state to past.
+   * Safe to call even if startBatch was never called (no-op).
+   */
   const endBatch = useCallback(() => {
     batchRef.current = false;
     const startState = batchStartStateRef.current;
@@ -129,6 +150,10 @@ export function useThemeHistory(initialState: ThemeHistoryState) {
 
   /** Reset history to a new initial state (e.g. when loading a different theme) */
   const resetHistory = useCallback((newState: ThemeHistoryState) => {
+    // Also reset any in-progress batch to prevent stale state
+    batchRef.current = false;
+    batchStartStateRef.current = null;
+    presentRef.current = newState;
     setHistory({
       past: [],
       present: newState,

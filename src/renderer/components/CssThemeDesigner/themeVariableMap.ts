@@ -844,7 +844,7 @@ export const THEME_VARIABLE_MAP: ThemeVariable[] = [
     description: 'Border radius for user chat message bubbles. Typically asymmetric: rounded on 3 corners with a small radius on the bottom-right to indicate speech direction.',
     affectsScenes: ['chat'],
     affectsSelectors: ['.message-item.user .message-bubble', '[class*="message"][class*="user"] .message-content'],
-    controlType: 'slider',
+    controlType: 'dropdown',
     range: { min: 0, max: 24, step: 1, unit: 'px' },
     defaultLight: '12px 12px 4px 12px',
     defaultDark: '12px 12px 4px 12px',
@@ -860,7 +860,7 @@ export const THEME_VARIABLE_MAP: ThemeVariable[] = [
     description: 'Border radius for AI response message bubbles. Mirror of user bubble — small radius on bottom-left.',
     affectsScenes: ['chat'],
     affectsSelectors: ['.message-item.ai .message-bubble', '[class*="message"][class*="ai"] .message-content'],
-    controlType: 'slider',
+    controlType: 'dropdown',
     range: { min: 0, max: 24, step: 1, unit: 'px' },
     defaultLight: '12px 12px 12px 4px',
     defaultDark: '12px 12px 12px 4px',
@@ -1147,6 +1147,9 @@ export const getVariableByKey = (key: string): ThemeVariable | undefined =>
 export const getDefaultValues = (mode: 'light' | 'dark'): Record<string, string> => {
   const result: Record<string, string> = {};
   for (const v of THEME_VARIABLE_MAP) {
+    if (process.env.NODE_ENV !== 'production' && v.key in result) {
+      console.warn(`[themeVariableMap] Duplicate key detected: ${v.key}`);
+    }
     result[v.key] = mode === 'light' ? v.defaultLight : v.defaultDark;
   }
   return result;

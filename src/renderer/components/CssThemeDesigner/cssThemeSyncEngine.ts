@@ -192,22 +192,27 @@ const GROUP_ORDER: string[] = [
  *   :root { ... light mode variables ... }
  *   [data-theme='dark'] { ... dark mode variables ... }
  *   <unmatched custom CSS>
+ *
+ * @param skipDefaults - If true (default), variables whose value matches
+ *   the themeVariableMap default are omitted. Set to false for lossless
+ *   round-trip export (e.g. when the user explicitly set a default value).
  */
 export function generateCssFromVariables(
   lightVars: Record<string, string>,
   darkVars: Record<string, string>,
-  customCss: string = ''
+  customCss: string = '',
+  skipDefaults: boolean = true
 ): string {
   const sections: string[] = [];
 
   // Build :root block
-  const lightLines = buildVariableBlock(lightVars, 'light');
+  const lightLines = buildVariableBlock(lightVars, 'light', skipDefaults);
   if (lightLines.length > 0) {
     sections.push(`:root {\n${lightLines.join('\n')}\n}`);
   }
 
   // Build dark mode block
-  const darkLines = buildVariableBlock(darkVars, 'dark');
+  const darkLines = buildVariableBlock(darkVars, 'dark', skipDefaults);
   if (darkLines.length > 0) {
     sections.push(`[data-theme='dark'] {\n${darkLines.join('\n')}\n}`);
   }
@@ -221,7 +226,7 @@ export function generateCssFromVariables(
 }
 
 /** Build grouped variable declaration lines for a :root or dark block */
-function buildVariableBlock(vars: Record<string, string>, mode: 'light' | 'dark'): string[] {
+function buildVariableBlock(vars: Record<string, string>, mode: 'light' | 'dark', skipDefaults: boolean): string[] {
   const lines: string[] = [];
   let currentGroup = '';
 
@@ -243,7 +248,7 @@ function buildVariableBlock(vars: Record<string, string>, mode: 'light' | 'dark'
     const group = varDef?.group || 'unknown';
 
     // Skip variables whose value matches the default (no need to override)
-    if (varDef) {
+    if (skipDefaults && varDef) {
       const defaultValue = mode === 'light' ? varDef.defaultLight : varDef.defaultDark;
       if (vars[key] === defaultValue) continue;
     }
