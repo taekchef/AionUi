@@ -188,11 +188,7 @@ export function useThemeHistory(initialState: ThemeHistoryState) {
  * - Cmd/Ctrl+Shift+Z → redo
  * - Cmd/Ctrl+S → save callback
  */
-export function createKeyboardHandler(handlers: {
-  undo: () => void;
-  redo: () => void;
-  save?: () => void;
-}) {
+export function createKeyboardHandler(handlers: { undo: () => void; redo: () => void; save?: () => void }) {
   return (e: KeyboardEvent | React.KeyboardEvent) => {
     const isMeta = e.metaKey || e.ctrlKey;
 

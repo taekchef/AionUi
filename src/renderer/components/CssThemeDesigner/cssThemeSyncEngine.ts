@@ -17,7 +17,7 @@
  *   - Parsing is debounced (consumer should debounce, not this module)
  */
 
-import { THEME_VARIABLE_MAP, type ThemeVariable } from './themeVariableMap';
+import { THEME_VARIABLE_MAP } from './themeVariableMap';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -59,10 +59,8 @@ export interface ParseResult {
  * selector blocks. Supports multiple quote styles for data-theme attribute.
  */
 const ROOT_BLOCK_RE = /:root\s*\{([^}]*)\}/g;
-const DARK_BLOCK_RE =
-  /\[data-theme=["']?dark["']?\]\s*\{([^}]*)\}/g;
-const COLOR_SCHEME_DARK_RE =
-  /\[data-color-scheme=["']?default["']?\]\[data-theme=["']?dark["']?\]\s*\{([^}]*)\}/g;
+const DARK_BLOCK_RE = /\[data-theme=["']?dark["']?\]\s*\{([^}]*)\}/g;
+const COLOR_SCHEME_DARK_RE = /\[data-color-scheme=["']?default["']?\]\[data-theme=["']?dark["']?\]\s*\{([^}]*)\}/g;
 
 /** Extract CSS custom property declarations from a block body */
 function extractVariablesFromBlock(blockBody: string): Record<string, string> {
@@ -172,18 +170,7 @@ const GROUP_COMMENTS: Record<string, string> = {
 };
 
 /** Order of groups in generated CSS */
-const GROUP_ORDER: string[] = [
-  'globalTone',
-  'aouPalette',
-  'backgrounds',
-  'text',
-  'messages',
-  'borders',
-  'semantic',
-  'shape',
-  'typography',
-  'effects',
-];
+const GROUP_ORDER: string[] = ['globalTone', 'aouPalette', 'backgrounds', 'text', 'messages', 'borders', 'semantic', 'shape', 'typography', 'effects'];
 
 /**
  * Generate CSS code from structured variable state.
@@ -197,12 +184,7 @@ const GROUP_ORDER: string[] = [
  *   the themeVariableMap default are omitted. Set to false for lossless
  *   round-trip export (e.g. when the user explicitly set a default value).
  */
-export function generateCssFromVariables(
-  lightVars: Record<string, string>,
-  darkVars: Record<string, string>,
-  customCss: string = '',
-  skipDefaults: boolean = true
-): string {
+export function generateCssFromVariables(lightVars: Record<string, string>, darkVars: Record<string, string>, customCss: string = '', skipDefaults: boolean = true): string {
   const sections: string[] = [];
 
   // Build :root block
@@ -306,20 +288,14 @@ export function extractSelectorOverrides(css: string): Record<string, string> {
     // Build regex to find the selector block and extract the property
     const escapedSelector = override.selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // Match selector with possible combinators/pseudo-classes after it
-    const blockRe = new RegExp(
-      `${escapedSelector}[^{]*\\{([^}]*)}`,
-      'g'
-    );
+    const blockRe = new RegExp(`${escapedSelector}[^{]*\\{([^}]*)}`, 'g');
 
     let match: RegExpExecArray | null;
     blockRe.lastIndex = 0;
     while ((match = blockRe.exec(css)) !== null) {
       const blockBody = match[1];
       // Extract the specific property
-      const propRe = new RegExp(
-        `${override.property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*([^;!]+)`,
-        'i'
-      );
+      const propRe = new RegExp(`${override.property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*([^;!]+)`, 'i');
       const propMatch = propRe.exec(blockBody);
       if (propMatch) {
         result[override.variableKey] = propMatch[1].trim();
@@ -345,8 +321,7 @@ export function parseThemeCss(css: string): {
   warnings: string[];
 } {
   // Step 1: Extract variables from :root and [data-theme='dark'] blocks
-  const { lightVariables, darkVariables, unmatchedCss, warnings } =
-    parseCssToVariables(css);
+  const { lightVariables, darkVariables, unmatchedCss, warnings } = parseCssToVariables(css);
 
   // Step 2: Try to extract selector overrides from unmatched CSS
   const selectorOverrides = extractSelectorOverrides(unmatchedCss);

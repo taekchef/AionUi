@@ -42,11 +42,21 @@ function createHistoryManager(initialState: ThemeHistoryState) {
   let presentMirror: ThemeHistoryState = initialState;
 
   return {
-    get state() { return history.present; },
-    get canUndo() { return history.past.length > 0; },
-    get canRedo() { return history.future.length > 0; },
-    get undoCount() { return history.past.length; },
-    get redoCount() { return history.future.length; },
+    get state() {
+      return history.present;
+    },
+    get canUndo() {
+      return history.past.length > 0;
+    },
+    get canRedo() {
+      return history.future.length > 0;
+    },
+    get undoCount() {
+      return history.past.length;
+    },
+    get redoCount() {
+      return history.future.length;
+    },
 
     pushState(newState: ThemeHistoryState) {
       presentMirror = newState;

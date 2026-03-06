@@ -1,15 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  hexToRgb,
-  rgbToHex,
-  rgbToHsl,
-  hslToRgb,
-  hslToHex,
-  parseColorToHsl,
-  computeDarkFromLight,
-  computeLightFromDark,
-  syncAllVariables,
-} from '@/renderer/components/CssThemeDesigner/darkModeSync';
+import { hexToRgb, rgbToHex, hslToRgb, parseColorToHsl, computeDarkFromLight, computeLightFromDark, syncAllVariables } from '@/renderer/components/CssThemeDesigner/darkModeSync';
 
 // ---------------------------------------------------------------------------
 // Color conversion utilities
@@ -214,12 +204,7 @@ describe('syncAllVariables with excludeKeys', () => {
     const source = { '--bg-1': '#ffffff', '--bg-2': '#f0f0f0' };
     const target = { '--bg-1': '#1a1a1a', '--bg-2': '#2a2a2a' };
 
-    const { records } = syncAllVariables(
-      source,
-      target,
-      'lightToDark',
-      new Set(['--bg-1'])
-    );
+    const { records } = syncAllVariables(source, target, 'lightToDark', new Set(['--bg-1']));
 
     expect(records.some((r) => r.key === '--bg-1')).toBe(false);
     expect(records.some((r) => r.key === '--bg-2')).toBe(true);

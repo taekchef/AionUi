@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  parseCssToVariables,
-  generateCssFromVariables,
-  extractSelectorOverrides,
-  parseThemeCss,
-} from '@/renderer/components/CssThemeDesigner/cssThemeSyncEngine';
+import { parseCssToVariables, generateCssFromVariables, extractSelectorOverrides, parseThemeCss } from '@/renderer/components/CssThemeDesigner/cssThemeSyncEngine';
 
 // ---------------------------------------------------------------------------
 // parseCssToVariables
@@ -31,7 +26,7 @@ describe('parseCssToVariables', () => {
     expect(result.darkVariables['--bg-1']).toBe('#1a1a1a');
   });
 
-  it('extracts variables from [data-theme=\'dark\'] block (single quotes)', () => {
+  it("extracts variables from [data-theme='dark'] block (single quotes)", () => {
     const css = `[data-theme='dark'] {
   --primary: #4080ff;
 }`;
@@ -101,11 +96,7 @@ describe('generateCssFromVariables', () => {
   });
 
   it('appends custom CSS section', () => {
-    const css = generateCssFromVariables(
-      { '--primary': '#165dff' },
-      {},
-      '.my-class { color: red; }'
-    );
+    const css = generateCssFromVariables({ '--primary': '#165dff' }, {}, '.my-class { color: red; }');
     expect(css).toContain('/* Custom CSS */');
     expect(css).toContain('.my-class { color: red; }');
   });
@@ -157,12 +148,7 @@ describe('lossless round-trip with skipDefaults=false', () => {
     const parsed = parseCssToVariables(originalCss);
 
     // Step 2: Generate with skipDefaults=false
-    const regenerated = generateCssFromVariables(
-      parsed.lightVariables,
-      parsed.darkVariables,
-      parsed.unmatchedCss,
-      false
-    );
+    const regenerated = generateCssFromVariables(parsed.lightVariables, parsed.darkVariables, parsed.unmatchedCss, false);
 
     // Step 3: Parse again
     const reparsed = parseCssToVariables(regenerated);

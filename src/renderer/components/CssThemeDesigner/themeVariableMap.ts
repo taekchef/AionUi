@@ -26,34 +26,13 @@
 // ---------------------------------------------------------------------------
 
 /** Control group identifiers — each maps to a collapsible card in Theme Designer */
-export type ThemeGroup =
-  | 'globalTone'
-  | 'aouPalette'
-  | 'backgrounds'
-  | 'text'
-  | 'messages'
-  | 'borders'
-  | 'semantic'
-  | 'shape'
-  | 'typography'
-  | 'effects';
+export type ThemeGroup = 'globalTone' | 'aouPalette' | 'backgrounds' | 'text' | 'messages' | 'borders' | 'semantic' | 'shape' | 'typography' | 'effects';
 
 /** Preview scene identifiers — used for control ↔ preview linkage */
 export type PreviewScene = 'chat' | 'sidebar' | 'settings' | 'workspace';
 
 /** Control widget type rendered in the visual editor */
-export type ControlType =
-  | 'color'
-  | 'colorScale'
-  | 'colorWithAlpha'
-  | 'linkedColorPair'
-  | 'slider'
-  | 'dropdown'
-  | 'toggle'
-  | 'gradient'
-  | 'shadowPreset'
-  | 'texturePreset'
-  | 'imageUpload';
+export type ControlType = 'color' | 'colorScale' | 'colorWithAlpha' | 'linkedColorPair' | 'slider' | 'dropdown' | 'toggle' | 'gradient' | 'shadowPreset' | 'texturePreset' | 'imageUpload';
 
 export interface ThemeVariable {
   /** CSS variable name, e.g. '--primary' */
@@ -231,8 +210,7 @@ export const THEME_VARIABLE_MAP: ThemeVariable[] = [
     key: '--primary',
     group: 'globalTone',
     labelKey: 'settings.themeDesigner.var.primary',
-    description:
-      'The main accent color used throughout the UI for primary buttons, links, active states, and focus rings. This is the single most impactful color variable — changing it redefines the entire app personality.',
+    description: 'The main accent color used throughout the UI for primary buttons, links, active states, and focus rings. This is the single most impactful color variable — changing it redefines the entire app personality.',
     affectsScenes: ['chat', 'sidebar', 'settings', 'workspace'],
     affectsSelectors: ['.arco-btn-primary', 'a', '[data-active]', '.arco-checkbox-checked', '.arco-radio-checked'],
     controlType: 'color',
@@ -1106,12 +1084,7 @@ export const THEME_VARIABLE_MAP: ThemeVariable[] = [
     defaultLight: 'none',
     defaultDark: 'none',
     suggestedRange: {
-      values: [
-        'none',
-        'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
-        'linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)',
-        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      ],
+      values: ['none', 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', 'linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)', 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'],
     },
   },
   {
@@ -1132,16 +1105,13 @@ export const THEME_VARIABLE_MAP: ThemeVariable[] = [
 // ---------------------------------------------------------------------------
 
 /** Get all variables belonging to a specific group */
-export const getVariablesByGroup = (group: ThemeGroup): ThemeVariable[] =>
-  THEME_VARIABLE_MAP.filter((v) => v.group === group);
+export const getVariablesByGroup = (group: ThemeGroup): ThemeVariable[] => THEME_VARIABLE_MAP.filter((v) => v.group === group);
 
 /** Get all variables that affect a specific preview scene */
-export const getVariablesByScene = (scene: PreviewScene): ThemeVariable[] =>
-  THEME_VARIABLE_MAP.filter((v) => v.affectsScenes.includes(scene));
+export const getVariablesByScene = (scene: PreviewScene): ThemeVariable[] => THEME_VARIABLE_MAP.filter((v) => v.affectsScenes.includes(scene));
 
 /** Get a variable definition by its CSS key */
-export const getVariableByKey = (key: string): ThemeVariable | undefined =>
-  THEME_VARIABLE_MAP.find((v) => v.key === key);
+export const getVariableByKey = (key: string): ThemeVariable | undefined => THEME_VARIABLE_MAP.find((v) => v.key === key);
 
 /** Get default values for all variables as a Record (for initializing editor state) */
 export const getDefaultValues = (mode: 'light' | 'dark'): Record<string, string> => {

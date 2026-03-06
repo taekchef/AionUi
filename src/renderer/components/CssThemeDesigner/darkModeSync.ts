@@ -20,7 +20,7 @@
  *   - Per-variable override: user can disable sync for individual variables
  */
 
-import { getVariableByKey, type ThemeVariable } from './themeVariableMap';
+import { getVariableByKey } from './themeVariableMap';
 
 // ---------------------------------------------------------------------------
 // Color conversion utilities (Hex ↔ RGB ↔ HSL)
@@ -117,17 +117,23 @@ export function hslToRgb(hsl: HSL): RGB {
     b = 0;
 
   if (h < 60) {
-    r = c; g = x;
+    r = c;
+    g = x;
   } else if (h < 120) {
-    r = x; g = c;
+    r = x;
+    g = c;
   } else if (h < 180) {
-    g = c; b = x;
+    g = c;
+    b = x;
   } else if (h < 240) {
-    g = x; b = c;
+    g = x;
+    b = c;
   } else if (h < 300) {
-    r = x; b = c;
+    r = x;
+    b = c;
   } else {
-    r = c; b = x;
+    r = c;
+    b = x;
   }
 
   return {
@@ -170,8 +176,7 @@ export function hslToHex(hsl: HSL): string {
 // ---------------------------------------------------------------------------
 
 /** Clamp a number between min and max */
-const clamp = (val: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, val));
+const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
 
 /**
  * Invert lightness: L → 100 - L
@@ -191,10 +196,7 @@ function invertLightness(hsl: HSL, _params?: Record<string, number>): HSL {
  * Used for accent/semantic colors that should remain recognizable.
  * Light → Dark: lighten to maintain visibility on dark backgrounds.
  */
-function shiftLightness(
-  hsl: HSL,
-  params?: Record<string, number>
-): HSL {
+function shiftLightness(hsl: HSL, params?: Record<string, number>): HSL {
   const lightnessShift = params?.lightnessShift ?? 15;
   const saturationShift = params?.saturationShift ?? -10;
 
@@ -245,10 +247,7 @@ export interface SyncRecord {
  * Compute the dark mode value for a given light mode value,
  * using the variable's sync rule.
  */
-export function computeDarkFromLight(
-  key: string,
-  lightValue: string
-): string | null {
+export function computeDarkFromLight(key: string, lightValue: string): string | null {
   const varDef = getVariableByKey(key);
   if (!varDef?.darkSyncRule || varDef.darkSyncRule.strategy === 'manual') {
     return null;
@@ -268,10 +267,7 @@ export function computeDarkFromLight(
  * Compute the light mode value for a given dark mode value.
  * Inverts the direction of the sync strategy.
  */
-export function computeLightFromDark(
-  key: string,
-  darkValue: string
-): string | null {
+export function computeLightFromDark(key: string, darkValue: string): string | null {
   const varDef = getVariableByKey(key);
   if (!varDef?.darkSyncRule || varDef.darkSyncRule.strategy === 'manual') {
     return null;
@@ -336,17 +332,11 @@ export function computeLightFromDark(
  * @param direction - Which direction to sync
  * @param excludeKeys - Set of variable keys to skip (user has disabled sync for these)
  */
-export function syncAllVariables(
-  sourceVars: Record<string, string>,
-  targetVars: Record<string, string>,
-  direction: 'lightToDark' | 'darkToLight',
-  excludeKeys: Set<string> = new Set()
-): { updatedVars: Record<string, string>; records: SyncRecord[] } {
+export function syncAllVariables(sourceVars: Record<string, string>, targetVars: Record<string, string>, direction: 'lightToDark' | 'darkToLight', excludeKeys: Set<string> = new Set()): { updatedVars: Record<string, string>; records: SyncRecord[] } {
   const updatedVars = { ...targetVars };
   const records: SyncRecord[] = [];
 
-  const computeFn =
-    direction === 'lightToDark' ? computeDarkFromLight : computeLightFromDark;
+  const computeFn = direction === 'lightToDark' ? computeDarkFromLight : computeLightFromDark;
 
   for (const [key, value] of Object.entries(sourceVars)) {
     if (excludeKeys.has(key)) continue;
@@ -369,10 +359,7 @@ export function syncAllVariables(
 /**
  * Revert a set of sync records — restores previous values.
  */
-export function revertSyncRecords(
-  vars: Record<string, string>,
-  records: SyncRecord[]
-): Record<string, string> {
+export function revertSyncRecords(vars: Record<string, string>, records: SyncRecord[]): Record<string, string> {
   const result = { ...vars };
   for (const record of records) {
     if (record.previousValue) {
