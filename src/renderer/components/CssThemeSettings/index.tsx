@@ -10,7 +10,7 @@ import { Button, Message, Modal } from '@arco-design/web-react';
 import { EditTwo, Plus, CheckOne } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import CssThemeModal from './CssThemeModal';
+import ThemeDesigner from '../CssThemeDesigner/ThemeDesigner';
 import { PRESET_THEMES, DEFAULT_THEME_ID } from './presets';
 import { BACKGROUND_BLOCK_START, injectBackgroundCssBlock } from './backgroundUtils';
 
@@ -243,6 +243,22 @@ const CssThemeSettings: React.FC = () => {
     [themes, activeThemeId, applyThemeCss, t]
   );
 
+  if (modalVisible) {
+    return (
+      <ThemeDesigner
+        themeName={editingTheme?.name}
+        themeCover={editingTheme?.cover}
+        initialCss={editingTheme?.css}
+        onBack={() => {
+          setModalVisible(false);
+          setEditingTheme(null);
+        }}
+        onSave={handleSaveTheme}
+        onDelete={editingTheme && !editingTheme.isPreset ? () => handleDeleteTheme(editingTheme.id) : undefined}
+      />
+    );
+  }
+
   return (
     <div className='space-y-12px'>
       {/* 标题栏 / Header */}
@@ -289,18 +305,6 @@ const CssThemeSettings: React.FC = () => {
           </div>
         ))}
       </div>
-
-      {/* 主题编辑弹窗 / Theme edit modal */}
-      <CssThemeModal
-        visible={modalVisible}
-        theme={editingTheme}
-        onClose={() => {
-          setModalVisible(false);
-          setEditingTheme(null);
-        }}
-        onSave={handleSaveTheme}
-        onDelete={editingTheme && !editingTheme.isPreset ? () => handleDeleteTheme(editingTheme.id) : undefined}
-      />
     </div>
   );
 };
