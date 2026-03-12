@@ -57,14 +57,27 @@ export async function navigateTo(page: Page, hash: string): Promise<void> {
     return;
   }
 
-  await page.evaluate((h) => window.location.assign(h), hash);
-  // Give React a tick to begin re-rendering after hash change
-  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-  // Wait for body to have meaningful content (event-driven, no fixed sleep)
-  try {
-    await page.waitForFunction(() => (document.body.textContent?.length ?? 0) > 50, { timeout: 10_000 });
-  } catch {
-    // Best-effort: if content doesn't appear, continue with the test
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.evaluate((h) => window.location.assign(h), hash);
+    // Give React a tick to begin re-rendering after hash change
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+
+    const reachedTarget = await page
+      .waitForFunction((expectedHash) => window.location.hash === expectedHash, hash, {
+        timeout: 8_000,
+      })
+      .then(() => true)
+      .catch(() => false);
+
+    if (reachedTarget || isAlreadyAt(page, hash)) {
+      // Wait for body to have meaningful content (event-driven, no fixed sleep)
+      try {
+        await page.waitForFunction(() => (document.body.textContent?.length ?? 0) > 50, { timeout: 10_000 });
+      } catch {
+        // Best-effort: if content doesn't appear, continue with the test
+      }
+      return;
+    }
   }
 }
 
