@@ -28,7 +28,6 @@ interface SlashCommandMenuProps {
 
 const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({ title, hint, items, activeIndex, loading = false, loadingText = 'Loading...', onHoverItem, onSelectItem, emptyText }) => {
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const activeDescendantId = items[activeIndex] ? `slash-command-option-${items[activeIndex].key}` : undefined;
 
   useEffect(() => {
     const current = itemRefs.current[activeIndex];
@@ -57,14 +56,13 @@ const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({ title, hint, items,
         <div className='text-13px font-semibold text-t-primary'>{title}</div>
         {hint && <div className='text-13px text-t-secondary truncate'>{hint}</div>}
       </div>
-      <div className='overflow-y-auto p-6px' style={{ maxHeight: 'min(34vh, 260px)' }} role='listbox' aria-label={title} aria-busy={loading} aria-activedescendant={activeDescendantId}>
+      <div role='listbox' aria-busy={loading} className='overflow-y-auto p-6px' style={{ maxHeight: 'min(34vh, 260px)' }}>
         {loading && <div className='px-10px py-12px text-13px text-t-secondary'>{loadingText}</div>}
         {!loading && items.length === 0 && <div className='px-10px py-12px text-13px text-t-secondary'>{emptyText}</div>}
         {!loading &&
           items.map((item, index) => (
             <button
               key={item.key}
-              id={`slash-command-option-${item.key}`}
               type='button'
               role='option'
               aria-selected={index === activeIndex}
