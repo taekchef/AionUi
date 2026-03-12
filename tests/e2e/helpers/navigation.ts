@@ -59,15 +59,15 @@ export async function navigateTo(page: Page, hash: string): Promise<void> {
 
   for (let attempt = 0; attempt < 2; attempt++) {
     await page.evaluate((h) => window.location.assign(h), hash);
-    // Give React a tick to begin re-rendering after hash change
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-
     const reachedTarget = await page
       .waitForFunction((expectedHash) => window.location.hash === expectedHash, hash, {
-        timeout: 8_000,
+        timeout: 10_000,
       })
       .then(() => true)
       .catch(() => false);
+
+    // Give React a tick to begin re-rendering after hash change
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
     if (reachedTarget || isAlreadyAt(page, hash)) {
       // Wait for body to have meaningful content (event-driven, no fixed sleep)
