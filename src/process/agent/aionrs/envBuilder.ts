@@ -29,6 +29,7 @@ function mapProvider(model: TProviderWithModel): AionrsProvider {
 }
 
 const GEMINI_OPENAI_COMPAT_PATH = '/v1beta/openai';
+const NON_V1_OPENAI_COMPAT_API_ROOTS = ['/api/paas/v4', '/api/v3', '/v2'];
 
 /**
  * Resolve base URL for OpenAI-compatible providers.
@@ -49,6 +50,20 @@ function resolveOpenAIBaseUrl(model: TProviderWithModel): string {
  */
 function stripTrailingV1(url: string): string {
   return url.replace(/\/v1\/?$/, '');
+}
+
+function hasNonV1OpenAICompatApiRoot(baseUrl: string): boolean {
+  try {
+    const pathname = new URL(baseUrl).pathname.replace(/\/+$/, '');
+    return NON_V1_OPENAI_COMPAT_API_ROOTS.some((root) => pathname.endsWith(root));
+  } catch {
+    return false;
+  }
+}
+
+function shouldUseRootChatCompletionsPath(model: TProviderWithModel): boolean {
+  if (model.platform === 'gemini') return true;
+  return model.platform === 'custom' && hasNonV1OpenAICompatApiRoot(model.baseUrl || '');
 }
 
 /**
@@ -137,9 +152,9 @@ export function buildSpawnConfig(
  * Build `.aionrs.toml` project config content for provider compat overrides.
  * Returns non-empty string only when overrides are needed.
  *
- * - Gemini's OpenAI-compatible endpoint already includes version in the base URL
- *   (`/v1beta/openai`), so we override api_path to `/chat/completions` to avoid
- *   the default `/v1/chat/completions` which would produce a 404.
+ * - Some OpenAI-compatible endpoints already include their API root in the base
+ *   URL, so we override api_path to `/chat/completions` to avoid AionRS adding
+ *   its default `/v1/chat/completions` suffix.
  * - OpenAI official API requires `max_completion_tokens` instead of `max_tokens`
  *   for newer models (gpt-5.x, o-series, etc.).
  */
@@ -149,8 +164,7 @@ function buildProjectConfig(model: TProviderWithModel, provider: AionrsProvider)
   // Collect compat overrides as key-value pairs
   const overrides: string[] = [];
 
-  // Gemini uses /v1beta/openai as base URL — skip the default /v1 prefix
-  if (model.platform === 'gemini') {
+  if (shouldUseRootChatCompletionsPath(model)) {
     overrides.push('api_path = "/chat/completions"');
   }
 
