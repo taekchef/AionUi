@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import type { TProviderWithModel } from '@/common/config/storage';
 import { buildSpawnConfig } from '@/process/agent/aionrs/envBuilder';
 
-function createModel(baseUrl: string): TProviderWithModel {
+function createModel(baseUrl: string, overrides: Partial<TProviderWithModel> = {}): TProviderWithModel {
   return {
     id: 'test-provider',
     platform: 'custom',
@@ -17,11 +17,12 @@ function createModel(baseUrl: string): TProviderWithModel {
     baseUrl,
     apiKey: 'test-key',
     useModel: 'test-model',
+    ...overrides,
   };
 }
 
-function buildProjectConfig(baseUrl: string): string {
-  return buildSpawnConfig(createModel(baseUrl), {
+function buildProjectConfig(baseUrl: string, overrides: Partial<TProviderWithModel> = {}): string {
+  return buildSpawnConfig(createModel(baseUrl, overrides), {
     workspace: '/tmp/aionui-test-workspace',
   }).projectConfig;
 }
@@ -44,5 +45,34 @@ describe('aionrs envBuilder project config', () => {
     expect(config).toContain('[providers.openai.compat]');
     expect(config).not.toContain('api_path = "/chat/completions"');
     expect(config).toContain('max_tokens_field = "max_completion_tokens"');
+  });
+
+  it('accepts non-v1 API roots with trailing slashes', () => {
+    const config = buildProjectConfig('https://open.bigmodel.cn/api/paas/v4/');
+
+    expect(config).toContain('[providers.openai.compat]');
+    expect(config).toContain('api_path = "/chat/completions"');
+  });
+
+  it('does not override chat completions path for unrelated custom base URLs', () => {
+    const config = buildProjectConfig('https://example.com/openai-compatible');
+
+    expect(config).toBe('');
+  });
+
+  it('does not throw or override chat completions path for invalid custom base URLs', () => {
+    const config = buildProjectConfig('not a url');
+
+    expect(config).toBe('');
+  });
+
+  it('keeps the Gemini root chat completions path override', () => {
+    const config = buildProjectConfig('https://generativelanguage.googleapis.com', {
+      platform: 'gemini',
+      name: 'Gemini',
+    });
+
+    expect(config).toContain('[providers.openai.compat]');
+    expect(config).toContain('api_path = "/chat/completions"');
   });
 });
