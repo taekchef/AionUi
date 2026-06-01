@@ -398,6 +398,20 @@
     "toolsRequired": "/btw yalnızca bu konuşmada zaten mevcut olan bilgilere dayanarak yanıt verebilir. Arama yapma, göz atma veya yeni bilgi getirme erişimi yoktur.",
     "error": "Yan soru yanıtlanamadı."
   },
+  "sideConversation": {
+    "title": "Side conversation",
+    "badge": "Side · from main thread",
+    "empty": "Ask a follow-up without leaving the main thread. Context from the parent is included as read-only reference.",
+    "promote": "Keep",
+    "discard": "Discard",
+    "discardConfirm": "Discard this side thread? This cannot be undone.",
+    "close": "Collapse",
+    "reopen": "Reopen side",
+    "parentRunning": "Main task still running",
+    "parentFinished": "Main thread finished",
+    "placeholder": "Ask in the side thread…",
+    "unsupported": "Side conversations are not available for this session."
+  },
   "commandQueue": {
     "title": "Sıradaki Komutlar",
     "clear": "Kuyruğu Temizle",

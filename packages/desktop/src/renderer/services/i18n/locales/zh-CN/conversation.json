@@ -403,6 +403,20 @@
     "toolsRequired": "/btw 只能根据当前对话中已有的内容作答，无法搜索、浏览或获取新信息。",
     "error": "顺便提问失败。"
   },
+  "sideConversation": {
+    "title": "侧边会话",
+    "badge": "侧边 · 来自主线程",
+    "empty": "在不离开主线程的情况下追问。已继承主线程上下文（只读参考）。",
+    "promote": "转正",
+    "discard": "丢弃",
+    "discardConfirm": "确定丢弃这条侧边线程？此操作无法撤销。",
+    "close": "折叠",
+    "reopen": "重新打开侧边",
+    "parentRunning": "主任务仍在运行",
+    "parentFinished": "主线程已完成",
+    "placeholder": "在侧边会话中提问…",
+    "unsupported": "当前会话不支持侧边会话。"
+  },
   "commandQueue": {
     "title": "排队指令",
     "clear": "清空队列",

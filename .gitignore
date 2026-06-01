@@ -215,3 +215,6 @@ graphify-out/
 .graphify_python
 
 .snow/
+
+# Local AionCore clone for side-conversation work (commit/push from that repo)
+.aioncore-explore/

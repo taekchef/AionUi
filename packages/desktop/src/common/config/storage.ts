@@ -189,6 +189,22 @@ export interface IEnvStorageRefer {
  */
 export type ConversationSource = 'aionui' | 'telegram' | 'lark' | 'dingtalk' | 'weixin' | 'wecom' | (string & {});
 
+/** Side-conversation linkage fields, optional on every conversation variant's `extra`. */
+export type SideConversationExtra = {
+  /** Child → parent link (present on side conversations only). */
+  parent_conversation_id?: string;
+  /** Marks this conversation as a side/forked thread. */
+  side_mode?: boolean;
+  /** Ephemeral side threads are hidden from history and eligible for cleanup. */
+  ephemeral?: boolean;
+  /** Guardrail level for the side thread. Default 'reference_readonly'. */
+  side_guardrail?: 'reference_readonly' | 'full';
+  /** Parent message id at fork time (inherit "up to here"). */
+  forked_at_msg_id?: string;
+  /** Pointer on the PARENT conversation to its active side thread (reopen across restarts). */
+  side_conversation_id?: string;
+};
+
 interface IChatConversation<T, Extra> {
   created_at: number;
   modified_at: number;
@@ -196,7 +212,7 @@ interface IChatConversation<T, Extra> {
   desc?: string;
   id: string;
   type: T;
-  extra: Extra;
+  extra: Extra & SideConversationExtra;
   model: TProviderWithModel;
   status?: 'pending' | 'running' | 'finished' | undefined;
   /** 会话来源，默认为 aionui / Conversation source, defaults to aionui */

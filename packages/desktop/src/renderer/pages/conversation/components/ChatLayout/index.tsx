@@ -60,6 +60,10 @@ const ChatLayout: React.FC<{
   onRenameTitle?: (new_name: string) => Promise<boolean>;
   /** Optional override for the leading icon shown before the title (e.g. team Peoples icon) */
   headerLeading?: React.ReactNode;
+  /** Renders the side-conversation dock column; omit when no side thread or collapsed */
+  sideDock?: React.ReactNode;
+  /** Whether the side dock column is expanded */
+  sideDockOpen?: boolean;
 }> = (props) => {
   const { conversation_id, workspacePath, isTemporaryWorkspace } = props;
   const { backend, presetAssistant, agent_name, workspaceEnabled = true, workspacePreferenceKey } = props;
@@ -115,6 +119,24 @@ const ChatLayout: React.FC<{
     maxWidth: MAX_WORKSPACE_PANEL_PX,
     storageKey: 'chat-workspace-width-px',
   });
+
+  const {
+    splitRatio: sideDockWidthPx,
+    createDragHandle: createSideDockDragHandle,
+  } = useResizableSplit({
+    unit: 'px',
+    defaultWidth: 384,
+    minWidth: 320,
+    maxWidth: 620,
+    storageKey: 'side-conversation-width-px',
+  });
+
+  useEffect(() => {
+    if (props.sideDockOpen && workspaceEnabled) {
+      setRightSiderCollapsed(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- collapse workspace only when side dock opens
+  }, [props.sideDockOpen]);
 
   // Pre-hook metrics: compute dynamic min/max for the chat-preview split hook
   const { dynamicChatMinRatio, dynamicChatMaxRatio } = calcLayoutMetrics({
@@ -320,6 +342,23 @@ const ChatLayout: React.FC<{
             )}
           </div>
         </div>
+        {props.sideDockOpen && props.sideDock && !layout?.isMobile && (
+          <div
+            className={classNames('!bg-1 relative chat-layout-side-dock layout-sider')}
+            style={{
+              flexGrow: 0,
+              flexShrink: 0,
+              flexBasis: `${Math.round(sideDockWidthPx)}px`,
+              width: `${Math.round(sideDockWidthPx)}px`,
+              minWidth: '320px',
+              borderLeft: '1px solid var(--bg-3)',
+              overflow: 'hidden',
+            }}
+          >
+            {createSideDockDragHandle({ className: 'absolute left-0 top-0 bottom-0', style: {}, reverse: true })}
+            {props.sideDock}
+          </div>
+        )}
         {workspaceEnabled && !layout?.isMobile && (
           <div
             className={classNames('!bg-1 relative chat-layout-right-sider layout-sider')}

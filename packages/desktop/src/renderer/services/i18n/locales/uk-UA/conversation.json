@@ -402,6 +402,20 @@
     "toolsRequired": "/btw може відповідати лише на запитання на основі того, що вже є в цьому діалозі. У нього немає доступу до пошуку, браузера або отримання нової інформації.",
     "error": "Не вдалося відповісти на бічне запитання."
   },
+  "sideConversation": {
+    "title": "Side conversation",
+    "badge": "Side · from main thread",
+    "empty": "Ask a follow-up without leaving the main thread. Context from the parent is included as read-only reference.",
+    "promote": "Keep",
+    "discard": "Discard",
+    "discardConfirm": "Discard this side thread? This cannot be undone.",
+    "close": "Collapse",
+    "reopen": "Reopen side",
+    "parentRunning": "Main task still running",
+    "parentFinished": "Main thread finished",
+    "placeholder": "Ask in the side thread…",
+    "unsupported": "Side conversations are not available for this session."
+  },
   "commandQueue": {
     "title": "Черга команд",
     "clear": "Очистити чергу",

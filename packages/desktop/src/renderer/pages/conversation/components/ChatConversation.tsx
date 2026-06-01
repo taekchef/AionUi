@@ -5,6 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
+import { isSideConversationSupported } from '@/common/chat/sideConversation';
 import type { IConversationMcpStatus, IProvider, TChatConversation, TProviderWithModel } from '@/common/config/storage';
 import { uuid } from '@/common/utils';
 import addChatIcon from '@/renderer/assets/icons/add-chat.svg';
@@ -13,18 +14,28 @@ import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { usePresetAssistantInfo, resolveAssistantConfigId } from '@/renderer/hooks/agent/usePresetAssistantInfo';
 import { iconColors } from '@/renderer/styles/colors';
 import { Button, Dropdown, Menu, Tooltip, Typography } from '@arco-design/web-react';
+
+const SIDE_PARENT_STUB = {
+  id: '',
+  type: 'acp',
+  name: '',
+  created_at: 0,
+  modified_at: 0,
+  extra: { backend: 'claude' },
+  model: { id: 'stub', platform: 'stub', name: 'stub', base_url: '', api_key: '', use_model: 'stub' },
+} as TChatConversation;
 import { History } from '@icon-park/react';
 import React, { useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { emitter } from '../../../utils/emitter';
-import AcpChat from '../platforms/acp/AcpChat';
 import ChatLayout from './ChatLayout';
 import ChatSlider from './ChatSlider.tsx';
-import NanobotChat from '../platforms/nanobot/NanobotChat';
-import OpenClawChat from '../platforms/openclaw/OpenClawChat';
-import RemoteChat from '../platforms/remote/RemoteChat';
+import { SideConversationControlProvider } from '@/renderer/pages/conversation/context/SideConversationControlContext';
+import { SideConversationDock, useSideConversation } from './SideConversationPanel';
+import { renderPlatformChat } from './renderPlatformChat';
+import { useConversationAgents } from '@/renderer/pages/conversation/hooks/useConversationAgents';
 import AcpModelSelector from '@/renderer/components/agent/AcpModelSelector';
 import { saveAionrsDefaultModel } from '@/renderer/pages/guid/hooks/agentSelectionUtils';
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
@@ -226,99 +237,50 @@ const ChatConversation: React.FC<{
   const conversationAgentName = (conversation?.extra as { agent_name?: string } | undefined)?.agent_name;
   const assistantDisplayName = presetAssistantInfo?.name || conversationAgentName;
 
+  const { cliAgents } = useConversationAgents();
+  const initialSideChildId = conversation?.extra?.side_conversation_id;
+  const side = useSideConversation({
+    parent: conversation ?? SIDE_PARENT_STUB,
+    initialChildId: initialSideChildId,
+  });
+
+  const sideBackend =
+    conversation?.type === 'acp'
+      ? (conversation.extra as { backend?: string }).backend
+      : conversation?.type === 'codex'
+        ? 'codex'
+        : conversation?.type;
+  const sideAgentMeta = cliAgents.find((a) => a.backend === sideBackend || a.agent_type === conversation?.type);
+  const enableSide = Boolean(
+    conversation &&
+      !isMobile &&
+      isSideConversationSupported({
+        type: conversation.type,
+        backend: sideBackend,
+        supportsSideQuestion: sideAgentMeta?.behavior_policy?.supports_side_question,
+      })
+  );
+
+  const sideDockOpen = side.state === 'empty' || side.state === 'active';
+  const sideCollapsed = side.state === 'collapsed' && Boolean(side.childId);
+
+  const sideControlValue = useMemo(
+    () => ({
+      enableSide,
+      onOpenSide: (firstQuestion?: string) => {
+        void side.open(firstQuestion);
+      },
+      sideCollapsed,
+      onReopenSide: () => {
+        side.reopen();
+      },
+    }),
+    [enableSide, side, sideCollapsed]
+  );
+
   const conversationNode = useMemo(() => {
     if (!conversation || isAionrsConversation) return null;
-    switch (conversation.type) {
-      case 'acp':
-        return (
-          <AcpChat
-            key={conversation.id}
-            conversation_id={conversation.id}
-            workspace={conversation.extra?.workspace}
-            backend={conversation.extra?.backend || 'claude'}
-            session_mode={conversation.extra?.session_mode}
-            agent_name={assistantDisplayName}
-            cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
-            hideSendBox={hideSendBox}
-            loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
-            loadedMcpServers={(conversation.extra as { mcp_servers?: string[] } | undefined)?.mcp_servers}
-            loadedMcpStatuses={
-              (conversation.extra as { mcp_statuses?: IConversationMcpStatus[] } | undefined)?.mcp_statuses
-            }
-          ></AcpChat>
-        );
-      case 'gemini':
-        // Legacy Gemini conversation: the dedicated Gemini runtime has been
-        // removed. The message history is still served by the shared messages
-        // table, so AcpChat renders it fine. The composer is left enabled —
-        // any send attempt will get a BadRequest from the factory branch in
-        // aionui-common/src/enums.rs → factory.rs, surfacing a clear error
-        // to the user.
-        return (
-          <AcpChat
-            key={conversation.id}
-            conversation_id={conversation.id}
-            workspace={conversation.extra?.workspace}
-            backend='gemini'
-            agent_name={assistantDisplayName}
-            cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
-            hideSendBox={hideSendBox}
-            loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
-            loadedMcpServers={(conversation.extra as { mcp_servers?: string[] } | undefined)?.mcp_servers}
-            loadedMcpStatuses={
-              (conversation.extra as { mcp_statuses?: IConversationMcpStatus[] } | undefined)?.mcp_statuses
-            }
-          />
-        );
-      case 'codex': // Legacy: codex now uses ACP protocol
-        return (
-          <AcpChat
-            key={conversation.id}
-            conversation_id={conversation.id}
-            workspace={conversation.extra?.workspace}
-            backend='codex'
-            agent_name={assistantDisplayName}
-            hideSendBox={hideSendBox}
-            loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
-            loadedMcpServers={(conversation.extra as { mcp_servers?: string[] } | undefined)?.mcp_servers}
-            loadedMcpStatuses={
-              (conversation.extra as { mcp_statuses?: IConversationMcpStatus[] } | undefined)?.mcp_statuses
-            }
-          />
-        );
-      case 'openclaw-gateway':
-        return (
-          <OpenClawChat
-            key={conversation.id}
-            conversation_id={conversation.id}
-            workspace={conversation.extra?.workspace}
-            cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
-            loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
-          />
-        );
-      case 'nanobot':
-        return (
-          <NanobotChat
-            key={conversation.id}
-            conversation_id={conversation.id}
-            workspace={conversation.extra?.workspace}
-            cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
-            loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
-          />
-        );
-      case 'remote':
-        return (
-          <RemoteChat
-            key={conversation.id}
-            conversation_id={conversation.id}
-            workspace={conversation.extra?.workspace}
-            cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
-            loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
-          />
-        );
-      default:
-        return null;
-    }
+    return renderPlatformChat({ conversation, assistantDisplayName, hideSendBox });
   }, [conversation, isAionrsConversation, assistantDisplayName, hideSendBox]);
 
   const sliderTitle = useMemo(() => {
@@ -401,25 +363,48 @@ const ChatConversation: React.FC<{
         </div>
       )}
       {modelSelector && <div className='shrink-0'>{modelSelector}</div>}
+      {sideCollapsed && enableSide && (
+        <Button size='mini' type='text' onClick={() => side.reopen()}>
+          {t('conversation.sideConversation.reopen')}
+        </Button>
+      )}
     </div>
   );
 
   return (
-    <ChatLayout
-      title={conversation?.name}
-      {...chatLayoutProps}
-      headerExtra={headerExtraNode}
-      siderTitle={sliderTitle}
-      sider={<ChatSlider conversation={conversation} />}
-      workspaceEnabled={workspaceEnabled}
-      workspacePath={conversation?.extra?.workspace}
-      isTemporaryWorkspace={
-        (conversation?.extra as { is_temporary_workspace?: boolean } | undefined)?.is_temporary_workspace
-      }
-      conversation_id={conversation?.id}
-    >
-      {conversationNode}
-    </ChatLayout>
+    <SideConversationControlProvider value={sideControlValue}>
+      <ChatLayout
+        title={conversation?.name}
+        {...chatLayoutProps}
+        headerExtra={headerExtraNode}
+        siderTitle={sliderTitle}
+        sider={<ChatSlider conversation={conversation} />}
+        workspaceEnabled={workspaceEnabled}
+        workspacePath={conversation?.extra?.workspace}
+        isTemporaryWorkspace={
+          (conversation?.extra as { is_temporary_workspace?: boolean } | undefined)?.is_temporary_workspace
+        }
+        conversation_id={conversation?.id}
+        sideDockOpen={sideDockOpen}
+        sideDock={
+          side.childId && conversation ? (
+            <SideConversationDock
+              childId={side.childId}
+              parentRunning={conversation.status === 'running'}
+              onPromote={() => {
+                void side.promote();
+              }}
+              onDiscard={() => {
+                void side.discard();
+              }}
+              onCollapse={side.collapse}
+            />
+          ) : null
+        }
+      >
+        {conversationNode}
+      </ChatLayout>
+    </SideConversationControlProvider>
   );
 };
 

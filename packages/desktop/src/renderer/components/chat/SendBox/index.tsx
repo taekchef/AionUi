@@ -10,6 +10,7 @@ import BtwOverlay from '@/renderer/components/chat/BtwOverlay';
 import { useInputFocusRing } from '@/renderer/hooks/chat/useInputFocusRing';
 import SlashCommandMenu, { type SlashCommandMenuItem } from '@/renderer/components/chat/SlashCommandMenu';
 import { useBtwCommand } from '@/renderer/components/chat/BtwOverlay/useBtwCommand';
+import { useSideConversationControlSafe } from '@/renderer/pages/conversation/context/SideConversationControlContext';
 import { useSlashCommandController } from '@/renderer/hooks/chat/useSlashCommandController';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
@@ -51,6 +52,12 @@ const constVoid = (): void => undefined;
 // Threshold: switch to multi-line mode directly when character count exceeds this value to avoid heavy layout work
 const MAX_SINGLE_LINE_CHARACTERS = 800;
 const BTW_COMMAND_RE = /^\/btw(?:\s+([\s\S]*))?$/i;
+const SIDE_COMMAND_RE = /^\/side(?:\s+([\s\S]*))?$/i;
+
+function extractSideSlashQuestion(input: string): string | null {
+  const match = input.match(SIDE_COMMAND_RE);
+  return match ? (match[1] ?? '') : null;
+}
 const AT_FILE_HIGHLIGHT_COLOR = theme.Color.PrimaryColor;
 
 const getSelectedItemMatchKeys = (item: FileSelectionItem): string[] => {
@@ -173,6 +180,8 @@ const SendBox: React.FC<{
   onSlashBuiltinCommand?: (name: string) => void;
   hasPendingAttachments?: boolean;
   enableBtw?: boolean;
+  enableSide?: boolean;
+  onOpenSide?: (firstQuestion?: string) => void;
   allowSendWhileLoading?: boolean;
   compactActions?: boolean;
   selectedWorkspaceItems?: FileSelectionItem[];
@@ -205,6 +214,8 @@ const SendBox: React.FC<{
   onSlashBuiltinCommand,
   hasPendingAttachments = false,
   enableBtw = false,
+  enableSide: enableSideProp = false,
+  onOpenSide: onOpenSideProp,
   allowSendWhileLoading = false,
   compactActions = false,
   selectedWorkspaceItems,
@@ -386,8 +397,24 @@ const SendBox: React.FC<{
     t,
     messageApi: message,
   });
+  const sideControl = useSideConversationControlSafe();
+  const effectiveEnableSide = enableSideProp || sideControl?.enableSide || false;
+  const effectiveOnOpenSide = onOpenSideProp ?? sideControl?.onOpenSide;
   const btwCommand = useBtwCommand(conversationContext?.conversation_id, enableBtw);
   const btwQuestion = useMemo(() => extractBtwQuestion(input), [input]);
+  const sideSlashQuestion = useMemo(() => extractSideSlashQuestion(input), [input]);
+
+  useEffect(() => {
+    if (!effectiveEnableSide) return;
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        effectiveOnOpenSide?.();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [effectiveEnableSide, effectiveOnOpenSide]);
   const activeAtFileQuery = useMemo(() => {
     if (!conversationContext?.workspace) {
       return null;
@@ -437,6 +464,15 @@ const SendBox: React.FC<{
         selectionBehavior: 'insert',
       });
     }
+    if (effectiveEnableSide) {
+      commands.push({
+        name: 'side',
+        description: t('conversation.sideConversation.title'),
+        kind: 'builtin',
+        source: 'builtin',
+        selectionBehavior: 'insert',
+      });
+    }
     if (onSlashBuiltinCommand) {
       commands.push({
         name: 'open',
@@ -460,7 +496,7 @@ const SendBox: React.FC<{
       });
     }
     return commands;
-  }, [conversationContext?.conversation_id, enableBtw, onSlashBuiltinCommand, t]);
+  }, [conversationContext?.conversation_id, effectiveEnableSide, enableBtw, onSlashBuiltinCommand, t]);
 
   const mergedSlashCommands = useMemo(() => {
     const map = new Map<string, SlashCommandItem>();
@@ -1180,6 +1216,14 @@ const SendBox: React.FC<{
     if (activeCid) {
       warmedConversationRef.current = activeCid;
     }
+    if (effectiveEnableSide && sideSlashQuestion !== null) {
+      historyDraftRef.current = null;
+      setHistoryNavigationIndex(null);
+      setInput('');
+      effectiveOnOpenSide?.(sideSlashQuestion.trim() || undefined);
+      return;
+    }
+
     if (enableBtw && btwQuestion !== null) {
       const normalizedQuestion = btwQuestion.trim();
       if (!normalizedQuestion) {
@@ -1340,7 +1384,26 @@ const SendBox: React.FC<{
 
   // On mobile compact mode, the parent supplies the action sheet — collapse
   // tools/rightTools into the `+` launcher and skip the inline speech button.
-  const renderedTools = isMobileCompact ? mobilePlusButton : tools;
+  const sideTriggerButton =
+    effectiveEnableSide && !isMobileCompact ? (
+      <Button
+        size='mini'
+        type='text'
+        onClick={() => effectiveOnOpenSide?.()}
+        aria-label={t('conversation.sideConversation.title')}
+      >
+        ⑂ {t('conversation.sideConversation.title')}
+      </Button>
+    ) : null;
+
+  const renderedTools = isMobileCompact ? (
+    mobilePlusButton
+  ) : (
+    <>
+      {sideTriggerButton}
+      {tools}
+    </>
+  );
   const renderedRightTools = isMobileCompact ? null : rightTools;
   const renderedSpeechButton = isMobileCompact ? null : (
     <SpeechInputButton
