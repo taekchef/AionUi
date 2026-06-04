@@ -35,7 +35,6 @@ import ChatSlider from './ChatSlider.tsx';
 import { SideConversationControlProvider } from '@/renderer/pages/conversation/context/SideConversationControlContext';
 import { SideConversationDock, useSideConversation } from './SideConversationPanel';
 import { renderPlatformChat } from './renderPlatformChat';
-import { useConversationAgents } from '@/renderer/pages/conversation/hooks/useConversationAgents';
 import AcpModelSelector from '@/renderer/components/agent/AcpModelSelector';
 import { saveAionrsDefaultModel } from '@/renderer/pages/guid/hooks/agentSelectionUtils';
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
@@ -151,6 +150,7 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
   conversation,
   sliderTitle,
 }) => {
+  const { t } = useTranslation();
   const onSelectModel = useCallback(
     async (_provider: IProvider, modelName: string) => {
       const selected = { ..._provider, use_model: modelName } as TProviderWithModel;
@@ -175,6 +175,55 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
   // header space; the dropdown stays available on desktop and tablets ≥768px.
   const isMobile = Boolean(layout?.isMobile);
 
+  const side = useSideConversation({
+    parent: conversation,
+    initialChildId: conversation.extra?.side_conversation_id,
+  });
+  const enableSide = !isMobile && isSideConversationSupported({ type: 'aionrs' });
+  const sideDockOpen = side.state === 'empty' || side.state === 'active' || side.state === 'promoted';
+  const sideCollapsed = side.state === 'collapsed' && side.tabs.length > 0;
+  const sideControlValue = useMemo(
+    () => ({
+      enableSide,
+      onOpenSide: (firstQuestion?: string) => {
+        const trimmed = firstQuestion?.trim();
+        if (trimmed) {
+          void side.openNewTab(trimmed);
+          return;
+        }
+        if (side.tabs.length > 0) {
+          void side.openNewTab();
+          return;
+        }
+        void side.open();
+      },
+      onAskInSide: (text: string) => {
+        void side.fillComposer(text);
+      },
+      sideCollapsed,
+      onReopenSide: () => {
+        side.reopen();
+      },
+    }),
+    [enableSide, side, sideCollapsed]
+  );
+  const sideDock =
+    side.childId ? (
+      <SideConversationDock
+        childId={side.childId}
+        tabs={side.tabs}
+        activeTabId={side.activeTabId}
+        onSelectTab={side.selectTab}
+        onCloseTab={(id) => {
+          void side.discardTab(id);
+        }}
+        onNewTab={() => {
+          void side.openNewTab();
+        }}
+        onCollapse={side.collapse}
+      />
+    ) : null;
+
   const chatLayoutProps = {
     title: conversation.name,
     siderTitle: sliderTitle,
@@ -187,6 +236,11 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
           hasCronSkill={hasLoadedSkill(conversation, 'cron')}
         />
         {!isMobile && <AionrsModelSelector selection={modelSelection} />}
+        {sideCollapsed && enableSide && (
+          <Button size='small' type='text' className='side-btn-text' onClick={() => side.reopen()}>
+            {t('conversation.sideConversation.reopen')}
+          </Button>
+        )}
       </div>
     ),
     workspaceEnabled,
@@ -198,21 +252,28 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
   };
 
   return (
-    <ChatLayout {...chatLayoutProps} conversation_id={conversation.id}>
-      <AionrsChat
+    <SideConversationControlProvider value={sideControlValue}>
+      <ChatLayout
+        {...chatLayoutProps}
         conversation_id={conversation.id}
-        workspace={conversation.extra.workspace}
-        modelSelection={modelSelection}
-        session_mode={conversation.extra?.session_mode}
-        cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
-        loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
-        loadedMcpServers={(conversation.extra as { mcp_servers?: string[] } | undefined)?.mcp_servers}
-        loadedMcpStatuses={
-          (conversation.extra as { mcp_statuses?: IConversationMcpStatus[] } | undefined)?.mcp_statuses
-        }
-        agent_name={presetAssistantInfo?.name}
-      />
-    </ChatLayout>
+        sideDockOpen={sideDockOpen}
+        sideDock={sideDock}
+      >
+        <AionrsChat
+          conversation_id={conversation.id}
+          workspace={conversation.extra.workspace}
+          modelSelection={modelSelection}
+          session_mode={conversation.extra?.session_mode}
+          cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
+          loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
+          loadedMcpServers={(conversation.extra as { mcp_servers?: string[] } | undefined)?.mcp_servers}
+          loadedMcpStatuses={
+            (conversation.extra as { mcp_statuses?: IConversationMcpStatus[] } | undefined)?.mcp_statuses
+          }
+          agent_name={presetAssistantInfo?.name}
+        />
+      </ChatLayout>
+    </SideConversationControlProvider>
   );
 };
 
@@ -237,7 +298,6 @@ const ChatConversation: React.FC<{
   const conversationAgentName = (conversation?.extra as { agent_name?: string } | undefined)?.agent_name;
   const assistantDisplayName = presetAssistantInfo?.name || conversationAgentName;
 
-  const { cliAgents } = useConversationAgents();
   const initialSideChildId = conversation?.extra?.side_conversation_id;
   const side = useSideConversation({
     parent: conversation ?? SIDE_PARENT_STUB,
@@ -249,26 +309,36 @@ const ChatConversation: React.FC<{
       ? (conversation.extra as { backend?: string }).backend
       : conversation?.type === 'codex'
         ? 'codex'
-        : conversation?.type;
-  const sideAgentMeta = cliAgents.find((a) => a.backend === sideBackend || a.agent_type === conversation?.type);
+        : undefined;
   const enableSide = Boolean(
     conversation &&
       !isMobile &&
       isSideConversationSupported({
         type: conversation.type,
         backend: sideBackend,
-        supportsSideQuestion: sideAgentMeta?.behavior_policy?.supports_side_question,
       })
   );
 
-  const sideDockOpen = side.state === 'empty' || side.state === 'active';
-  const sideCollapsed = side.state === 'collapsed' && Boolean(side.childId);
+  const sideDockOpen = side.state === 'empty' || side.state === 'active' || side.state === 'promoted';
+  const sideCollapsed = side.state === 'collapsed' && side.tabs.length > 0;
 
   const sideControlValue = useMemo(
     () => ({
       enableSide,
       onOpenSide: (firstQuestion?: string) => {
-        void side.open(firstQuestion);
+        const trimmed = firstQuestion?.trim();
+        if (trimmed) {
+          void side.openNewTab(trimmed);
+          return;
+        }
+        if (side.tabs.length > 0) {
+          void side.openNewTab();
+          return;
+        }
+        void side.open();
+      },
+      onAskInSide: (text: string) => {
+        void side.fillComposer(text);
       },
       sideCollapsed,
       onReopenSide: () => {
@@ -277,6 +347,23 @@ const ChatConversation: React.FC<{
     }),
     [enableSide, side, sideCollapsed]
   );
+
+  const sideDock =
+    side.childId && conversation ? (
+      <SideConversationDock
+        childId={side.childId}
+        tabs={side.tabs}
+        activeTabId={side.activeTabId}
+        onSelectTab={side.selectTab}
+        onCloseTab={(id) => {
+          void side.discardTab(id);
+        }}
+        onNewTab={() => {
+          void side.openNewTab();
+        }}
+        onCollapse={side.collapse}
+      />
+    ) : null;
 
   const conversationNode = useMemo(() => {
     if (!conversation || isAionrsConversation) return null;
@@ -364,7 +451,7 @@ const ChatConversation: React.FC<{
       )}
       {modelSelector && <div className='shrink-0'>{modelSelector}</div>}
       {sideCollapsed && enableSide && (
-        <Button size='mini' type='text' onClick={() => side.reopen()}>
+        <Button size='mini' type='text' className='side-btn-text' onClick={() => side.reopen()}>
           {t('conversation.sideConversation.reopen')}
         </Button>
       )}
@@ -386,21 +473,7 @@ const ChatConversation: React.FC<{
         }
         conversation_id={conversation?.id}
         sideDockOpen={sideDockOpen}
-        sideDock={
-          side.childId && conversation ? (
-            <SideConversationDock
-              childId={side.childId}
-              parentRunning={conversation.status === 'running'}
-              onPromote={() => {
-                void side.promote();
-              }}
-              onDiscard={() => {
-                void side.discard();
-              }}
-              onCollapse={side.collapse}
-            />
-          ) : null
-        }
+        sideDock={sideDock}
       >
         {conversationNode}
       </ChatLayout>

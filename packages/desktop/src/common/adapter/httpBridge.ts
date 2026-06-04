@@ -190,11 +190,14 @@ export async function httpRequest<T>(
   });
 
   if (!response.ok) {
-    let errorBody: unknown;
-    try {
-      errorBody = await response.json();
-    } catch {
-      errorBody = await response.text();
+    const rawErrorBody = await response.text();
+    let errorBody: unknown = rawErrorBody;
+    if (rawErrorBody.trim().length > 0) {
+      try {
+        errorBody = JSON.parse(rawErrorBody) as unknown;
+      } catch {
+        // keep plain text
+      }
     }
     if (options?.silentStatuses?.includes(response.status)) {
       console.debug(`[httpBridge] ${method} ${path} → ${response.status} (silenced)`, errorBody);

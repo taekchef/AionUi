@@ -64,7 +64,6 @@ import type {
 import type { ProtocolDetectionRequest, ProtocolDetectionResponse } from '../utils/protocolDetector';
 import { fromApiConversation, fromApiPaginatedConversations, toApiModelOptional } from './apiModelMapper';
 import {
-  BackendHttpError,
   httpDelete,
   httpGet,
   httpPatch,
@@ -215,58 +214,21 @@ export const conversation = {
     (p) => `/api/conversations/${p.conversation_id}/side-question`,
     (p) => ({ question: p.question })
   ),
-  /**
-   * Fork a side conversation. Prefer `POST /api/conversations/:id/side` (AionCore Phase 2);
-   * fall back to `conversation.create` when the backend route is unavailable.
-   */
-  createSide: {
-    invoke: async (p: {
-      parent: TChatConversation;
-      forked_at_msg_id?: string;
-      initial_prompt?: string;
-    }): Promise<{ conversation_id: string }> => {
-      try {
-        return await httpPost<
-          { conversation_id: string },
-          { parent: TChatConversation; forked_at_msg_id?: string; initial_prompt?: string }
-        >(
-          (params) => `/api/conversations/${params.parent.id}/side`,
-          (params) => ({
-            guardrail: 'reference_readonly',
-            initial_prompt: params.initial_prompt,
-            forked_at_msg_id: params.forked_at_msg_id,
-          })
-        ).invoke(p);
-      } catch (error) {
-        const isMissingRoute =
-          error instanceof BackendHttpError && (error.status === 404 || error.status === 405);
-        if (!isMissingRoute) {
-          throw error;
-        }
-        const { buildCreateSideConversationParams } =
-          await import('@/common/chat/buildCreateSideConversationParams');
-        const params = buildCreateSideConversationParams(p.parent, p.forked_at_msg_id);
-        if (!params) {
-          throw new Error('Side conversation is not supported for this parent conversation type');
-        }
-        const created = await conversation.create.invoke(params);
-        if (p.initial_prompt?.trim()) {
-          await conversation.sendMessage.invoke({
-            conversation_id: created.id,
-            input: (
-              await import('@/common/chat/sideConversationState')
-            ).buildSideContextPreamble({
-              recentTranscript: '',
-              question: p.initial_prompt.trim(),
-            }),
-            files: [],
-            loading_id: `side-${Date.now()}`,
-          });
-        }
-        return { conversation_id: created.id };
-      }
-    },
-  },
+  createSide: httpPost<
+    { conversation_id: string; fork_mode: 'agent_fork' | 'text_snapshot'; created: boolean },
+    { parent: TChatConversation; forked_at_msg_id?: string; initial_prompt?: string }
+  >(
+    (params) => `/api/conversations/${params.parent.id}/side`,
+    (params) => ({
+      guardrail: 'reference_readonly',
+      initial_prompt: params.initial_prompt,
+      forked_at_msg_id: params.forked_at_msg_id,
+    })
+  ),
+  listSide: withResponseMap(
+    httpGet<TChatConversation[], { parent_id: string }>((p) => `/api/conversations/${p.parent_id}/side`),
+    (list) => list.map(fromApiConversation)
+  ),
   confirmMessage: httpPost<void, IConfirmMessageParams>(
     (p) => `/api/conversations/${p.conversation_id}/confirmations/${encodeURIComponent(p.call_id)}/confirm`,
     (p) => ({ msg_id: p.msg_id, data: p.confirm_key })

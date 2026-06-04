@@ -118,7 +118,8 @@ const AcpSendBox: React.FC<{
   agent_name?: string;
   workspacePath?: string;
   messageState: UseAcpMessageReturn;
-}> = ({ conversation_id, backend, session_mode, agent_name, workspacePath, messageState }) => {
+  isSideMode?: boolean;
+}> = ({ conversation_id, backend, session_mode, agent_name, workspacePath, messageState, isSideMode = false }) => {
   const {
     running,
     hasHydratedRunningState,
@@ -572,7 +573,13 @@ Please check your local CLI tool authentication status`,
   };
 
   return (
-    <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
+    <div
+      className={
+        isSideMode
+          ? 'w-full mx-auto flex flex-col mt-auto mb-12px'
+          : 'max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'
+      }
+    >
       <CommandQueuePanel
         items={queuedCommands}
         paused={isQueuePaused}
@@ -589,6 +596,8 @@ Please check your local CLI tool authentication status`,
       <ThoughtDisplay running={aiProcessing && !hasThinkingMessage} onStop={handleStop} />
 
       <SendBox
+        conversationScopeId={conversation_id}
+        isSideComposer={isSideMode}
         onMobilePlusClick={isMobile ? () => setIsMobileSheetOpen(true) : undefined}
         value={content}
         onChange={handleContentChange}
@@ -599,10 +608,14 @@ Please check your local CLI tool authentication status`,
         }}
         loading={isBusy}
         disabled={false}
-        placeholder={t('acp.sendbox.placeholder', {
-          backend: agent_name || backend,
-          defaultValue: `Send message to {{backend}}...`,
-        })}
+        placeholder={
+          isSideMode
+            ? t('conversation.sideConversation.placeholder')
+            : t('acp.sendbox.placeholder', {
+                backend: agent_name || backend,
+                defaultValue: `Send message to {{backend}}...`,
+              })
+        }
         onStop={handleStop}
         className='z-10'
         onFilesAdded={handleFilesAdded}
@@ -676,7 +689,8 @@ Please check your local CLI tool authentication status`,
         slash_commands={slashCommands}
         onSlashBuiltinCommand={onSlashBuiltinCommand}
         allowSendWhileLoading
-        compactActions={false}
+        compactActions={isSideMode}
+        bottomHint={isSideMode ? '' : undefined}
       ></SendBox>
       {isMobile && (
         <>

@@ -4,42 +4,77 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Button, Popconfirm } from '@arco-design/web-react';
+import { Button, Tag, Tooltip } from '@arco-design/web-react';
+import { ReduceOne } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import SideConversationTabBar from './SideConversationTabBar';
+import type { SideForkMode, SideTab } from './useSideConversation';
 import styles from './SideConversationDock.module.css';
 
 type Props = {
-  parentRunning: boolean;
-  onPromote: () => void;
-  onDiscard: () => void;
+  tabs: SideTab[];
+  activeTabId?: string;
+  forkMode: SideForkMode;
+  onSelectTab: (tabId: string) => void;
+  onCloseTab: (tabId: string) => void;
+  onNewTab: () => void;
   onCollapse: () => void;
 };
 
-const SideConversationHeader: React.FC<Props> = ({ parentRunning, onPromote, onDiscard, onCollapse }) => {
+const SideConversationHeader: React.FC<Props> = ({
+  tabs,
+  activeTabId,
+  forkMode,
+  onSelectTab,
+  onCloseTab,
+  onNewTab,
+  onCollapse,
+}) => {
   const { t } = useTranslation();
+  const forkTag =
+    forkMode === 'agent_fork'
+      ? { color: 'arcoblue' as const, label: t('conversation.sideConversation.forkModeAgent') }
+      : { color: 'orange' as const, label: t('conversation.sideConversation.forkModeSnapshot') };
+
   return (
-    <div className={styles.header}>
-      <span className={styles.badge}>⑂ {t('conversation.sideConversation.badge')}</span>
-      <span className={parentRunning ? styles.statusRun : styles.statusDone}>
-        {parentRunning
-          ? t('conversation.sideConversation.parentRunning')
-          : t('conversation.sideConversation.parentFinished')}
-      </span>
-      <div className={styles.actions}>
-        <Button size='mini' type='text' onClick={onPromote}>
-          {t('conversation.sideConversation.promote')}
-        </Button>
-        <Popconfirm title={t('conversation.sideConversation.discardConfirm')} onOk={onDiscard}>
-          <Button size='mini' type='text' status='danger'>
-            {t('conversation.sideConversation.discard')}
+    <header className={styles.header}>
+      <div className={styles.headerTop}>
+        <div className={styles.headerTitleGroup}>
+          <span className={styles.title}>{t('conversation.sideConversation.title')}</span>
+          <Tooltip
+            content={
+              forkMode === 'text_snapshot' ? t('conversation.sideConversation.snapshotModeHint') : forkTag.label
+            }
+            mini
+          >
+            <Tag size='small' color={forkTag.color} className={styles.forkTag}>
+              {forkTag.label}
+            </Tag>
+          </Tooltip>
+        </div>
+        <div className={styles.headerActions}>
+          <Button
+            size='mini'
+            type='text'
+            icon={<ReduceOne theme='outline' size={14} />}
+            onClick={onCollapse}
+            aria-label={t('conversation.sideConversation.close')}
+          >
+            {t('conversation.sideConversation.close')}
           </Button>
-        </Popconfirm>
-        <Button size='mini' type='text' onClick={onCollapse}>
-          {t('conversation.sideConversation.close')}
-        </Button>
+        </div>
       </div>
-    </div>
+      <div className={styles.headerTabs}>
+        <SideConversationTabBar
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onSelect={onSelectTab}
+          onCloseTab={onCloseTab}
+          onNewTab={onNewTab}
+        />
+      </div>
+    </header>
   );
 };
 

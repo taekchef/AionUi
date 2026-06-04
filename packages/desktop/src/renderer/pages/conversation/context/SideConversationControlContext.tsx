@@ -9,6 +9,8 @@ import React, { createContext, useContext } from 'react';
 export type SideConversationControlValue = {
   enableSide: boolean;
   onOpenSide?: (firstQuestion?: string) => void;
+  /** Fill the active side tab composer with text (does not send). */
+  onAskInSide?: (selectedText: string) => void;
   /** True when a side thread exists but the dock is collapsed */
   sideCollapsed: boolean;
   onReopenSide?: () => void;

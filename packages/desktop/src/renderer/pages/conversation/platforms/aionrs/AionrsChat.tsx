@@ -33,6 +33,8 @@ const AionrsChat: React.FC<{
   loadedMcpServers?: string[];
   loadedMcpStatuses?: IConversationMcpStatus[];
   agent_name?: string;
+  isSideMode?: boolean;
+  composerPrefix?: React.ReactNode;
 }> = ({
   conversation_id,
   workspace,
@@ -44,6 +46,8 @@ const AionrsChat: React.FC<{
   loadedMcpServers,
   loadedMcpStatuses,
   agent_name,
+  isSideMode = false,
+  composerPrefix,
 }) => {
   useMessageLstCache(conversation_id);
   usePendingConfirmationsRecovery(conversation_id);
@@ -57,24 +61,27 @@ const AionrsChat: React.FC<{
       workspace,
       type: 'aionrs',
       cron_job_id,
+      isSideConversation: isSideMode,
       loadedSkills,
       loadedMcpServers,
       loadedMcpStatuses,
     };
-  }, [conversation_id, workspace, cron_job_id, loadedSkills, loadedMcpServers, loadedMcpStatuses]);
+  }, [conversation_id, workspace, cron_job_id, isSideMode, loadedSkills, loadedMcpServers, loadedMcpStatuses]);
 
   return (
     <ConversationProvider value={conversationValue}>
       <ConversationArtifactProvider conversation_id={conversation_id}>
-        <div className='flex-1 flex flex-col px-20px min-h-0'>
+        <div className={isSideMode ? 'flex-1 flex flex-col px-12px min-h-0' : 'flex-1 flex flex-col px-20px min-h-0'}>
           <FlexFullContainer>
             <MessageList className='flex-1' emptySlot={emptySlot} />
           </FlexFullContainer>
+          {composerPrefix}
           <AionrsSendBox
             conversation_id={conversation_id}
             modelSelection={modelSelection}
             session_mode={session_mode}
             agent_name={agent_name}
+            isSideMode={isSideMode}
           />
         </div>
       </ConversationArtifactProvider>

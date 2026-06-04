@@ -107,6 +107,10 @@ const ChatLayout: React.FC<{
 
   // Compute display name with fallback chain
   const display_name = presetAssistant?.name || agent_name || backendAgentName || capitalizedBackend;
+  const sideDockVisible = Boolean(props.sideDockOpen && props.sideDock && !layout?.isMobile);
+  const workspaceCollapsedForLayout = rightSiderCollapsed;
+  const sideDockMaxWidthPx = Math.max(420, Math.floor((containerWidth || 1240) / 2));
+  const sideDockDefaultWidthPx = Math.min(520, sideDockMaxWidthPx);
 
   const {
     splitRatio: workspaceWidthPxPref,
@@ -120,23 +124,13 @@ const ChatLayout: React.FC<{
     storageKey: 'chat-workspace-width-px',
   });
 
-  const {
-    splitRatio: sideDockWidthPx,
-    createDragHandle: createSideDockDragHandle,
-  } = useResizableSplit({
+  const { splitRatio: sideDockWidthPx, createDragHandle: createSideDockDragHandle } = useResizableSplit({
     unit: 'px',
-    defaultWidth: 384,
-    minWidth: 320,
-    maxWidth: 620,
-    storageKey: 'side-conversation-width-px',
+    defaultWidth: sideDockDefaultWidthPx,
+    minWidth: 240,
+    maxWidth: sideDockMaxWidthPx,
+    storageKey: 'side-conversation-width-px-v5',
   });
-
-  useEffect(() => {
-    if (props.sideDockOpen && workspaceEnabled) {
-      setRightSiderCollapsed(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- collapse workspace only when side dock opens
-  }, [props.sideDockOpen]);
 
   // Pre-hook metrics: compute dynamic min/max for the chat-preview split hook
   const { dynamicChatMinRatio, dynamicChatMaxRatio } = calcLayoutMetrics({
@@ -146,7 +140,7 @@ const ChatLayout: React.FC<{
     workspaceEnabled,
     isDesktop,
     isPreviewOpen,
-    rightSiderCollapsed,
+    rightSiderCollapsed: workspaceCollapsedForLayout,
     isMobile,
   });
 
@@ -169,7 +163,7 @@ const ChatLayout: React.FC<{
     workspaceEnabled,
     isDesktop,
     isPreviewOpen,
-    rightSiderCollapsed,
+    rightSiderCollapsed: workspaceCollapsedForLayout,
     isMobile,
   });
 
@@ -178,7 +172,7 @@ const ChatLayout: React.FC<{
     isPreviewOpen,
     isDesktop,
     workspaceEnabled,
-    rightSiderCollapsed,
+    rightSiderCollapsed: workspaceCollapsedForLayout,
     setRightSiderCollapsed,
     siderCollapsed: layout?.siderCollapsed,
     setSiderCollapsed: layout?.setSiderCollapsed,
@@ -190,7 +184,7 @@ const ChatLayout: React.FC<{
     workspaceEnabled,
     isDesktop,
     isPreviewOpen,
-    rightSiderCollapsed,
+    rightSiderCollapsed: workspaceCollapsedForLayout,
     setRightSiderCollapsed,
     workspaceWidthPx: workspaceWidthPxPref,
     setWorkspaceWidthPx: setWorkspaceWidthPxPref,
@@ -256,7 +250,7 @@ const ChatLayout: React.FC<{
             aria-label='Toggle workspace'
             onClick={() => dispatchWorkspaceToggleEvent()}
           >
-            {rightSiderCollapsed ? <ExpandRight size={16} /> : <ExpandLeft size={16} />}
+            {workspaceCollapsedForLayout ? <ExpandRight size={16} /> : <ExpandLeft size={16} />}
           </button>
         )}
       </div>
@@ -302,7 +296,7 @@ const ChatLayout: React.FC<{
                 minWidth: '240px',
               }}
               onClick={() => {
-                if (window.innerWidth < 768 && !rightSiderCollapsed) setRightSiderCollapsed(true);
+                if (window.innerWidth < 768 && !workspaceCollapsedForLayout) setRightSiderCollapsed(true);
               }}
             >
               <ArcoLayout.Content className='flex flex-col flex-1 bg-1 overflow-hidden'>
@@ -342,7 +336,7 @@ const ChatLayout: React.FC<{
             )}
           </div>
         </div>
-        {props.sideDockOpen && props.sideDock && !layout?.isMobile && (
+        {sideDockVisible && (
           <div
             className={classNames('!bg-1 relative chat-layout-side-dock layout-sider')}
             style={{
@@ -350,7 +344,7 @@ const ChatLayout: React.FC<{
               flexShrink: 0,
               flexBasis: `${Math.round(sideDockWidthPx)}px`,
               width: `${Math.round(sideDockWidthPx)}px`,
-              minWidth: '320px',
+              minWidth: '240px',
               borderLeft: '1px solid var(--bg-3)',
               overflow: 'hidden',
             }}
@@ -365,19 +359,19 @@ const ChatLayout: React.FC<{
             style={{
               flexGrow: 0,
               flexShrink: 0,
-              flexBasis: rightSiderCollapsed ? '0px' : `${Math.round(workspaceWidthPx)}px`,
-              width: rightSiderCollapsed ? '0px' : `${Math.round(workspaceWidthPx)}px`,
-              minWidth: rightSiderCollapsed ? '0px' : `${MIN_WORKSPACE_PANEL_PX}px`,
+              flexBasis: workspaceCollapsedForLayout ? '0px' : `${Math.round(workspaceWidthPx)}px`,
+              width: workspaceCollapsedForLayout ? '0px' : `${Math.round(workspaceWidthPx)}px`,
+              minWidth: workspaceCollapsedForLayout ? '0px' : `${MIN_WORKSPACE_PANEL_PX}px`,
               overflow: 'hidden',
-              borderLeft: rightSiderCollapsed ? 'none' : '1px solid var(--bg-3)',
+              borderLeft: workspaceCollapsedForLayout ? 'none' : '1px solid var(--bg-3)',
             }}
           >
             {isDesktop &&
-              !rightSiderCollapsed &&
+              !workspaceCollapsedForLayout &&
               createWorkspaceDragHandle({ className: 'absolute left-0 top-0 bottom-0', style: {}, reverse: true })}
             <WorkspacePanelHeader
               showToggle={!isMacRuntime && !isWindowsRuntime}
-              collapsed={rightSiderCollapsed}
+              collapsed={workspaceCollapsedForLayout}
               onToggle={() => dispatchWorkspaceToggleEvent()}
               togglePlacement={layout?.isMobile ? 'left' : 'right'}
               workspacePath={workspacePath}
@@ -406,7 +400,7 @@ const ChatLayout: React.FC<{
         )}
 
         {/* Desktop expand button when workspace is collapsed */}
-        {!isMacRuntime && !isWindowsRuntime && workspaceEnabled && rightSiderCollapsed && !layout?.isMobile && (
+        {!isMacRuntime && !isWindowsRuntime && workspaceEnabled && workspaceCollapsedForLayout && !layout?.isMobile && (
           <DesktopWorkspaceToggle />
         )}
       </div>

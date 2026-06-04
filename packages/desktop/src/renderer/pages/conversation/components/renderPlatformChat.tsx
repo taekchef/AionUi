@@ -8,6 +8,7 @@ import type { IConversationMcpStatus, TChatConversation } from '@/common/config/
 import AcpChat from '@/renderer/pages/conversation/platforms/acp/AcpChat';
 import NanobotChat from '@/renderer/pages/conversation/platforms/nanobot/NanobotChat';
 import OpenClawChat from '@/renderer/pages/conversation/platforms/openclaw/OpenClawChat';
+import AionrsPlatformChat from '@/renderer/pages/conversation/platforms/aionrs/AionrsPlatformChat';
 import RemoteChat from '@/renderer/pages/conversation/platforms/remote/RemoteChat';
 import React from 'react';
 
@@ -15,6 +16,9 @@ export type RenderPlatformChatOptions = {
   conversation: TChatConversation;
   assistantDisplayName?: string;
   hideSendBox?: boolean;
+  isSideMode?: boolean;
+  /** Rendered directly above the platform SendBox (e.g. side quick prompts). */
+  composerPrefix?: React.ReactNode;
 };
 
 /** Single source of truth for type→platform-chat routing. Used by main view and side dock. */
@@ -22,6 +26,8 @@ export function renderPlatformChat({
   conversation,
   assistantDisplayName,
   hideSendBox,
+  isSideMode = Boolean(conversation.extra?.side_mode),
+  composerPrefix,
 }: RenderPlatformChatOptions): React.ReactNode {
   switch (conversation.type) {
     case 'acp':
@@ -35,6 +41,8 @@ export function renderPlatformChat({
           agent_name={assistantDisplayName}
           cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
           hideSendBox={hideSendBox}
+          isSideMode={isSideMode}
+          composerPrefix={composerPrefix}
           loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
           loadedMcpServers={(conversation.extra as { mcp_servers?: string[] } | undefined)?.mcp_servers}
           loadedMcpStatuses={
@@ -52,6 +60,8 @@ export function renderPlatformChat({
           agent_name={assistantDisplayName}
           cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
           hideSendBox={hideSendBox}
+          isSideMode={isSideMode}
+          composerPrefix={composerPrefix}
           loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
           loadedMcpServers={(conversation.extra as { mcp_servers?: string[] } | undefined)?.mcp_servers}
           loadedMcpStatuses={
@@ -68,6 +78,8 @@ export function renderPlatformChat({
           backend='codex'
           agent_name={assistantDisplayName}
           hideSendBox={hideSendBox}
+          isSideMode={isSideMode}
+          composerPrefix={composerPrefix}
           loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
           loadedMcpServers={(conversation.extra as { mcp_servers?: string[] } | undefined)?.mcp_servers}
           loadedMcpStatuses={
@@ -103,6 +115,16 @@ export function renderPlatformChat({
           workspace={conversation.extra?.workspace}
           cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
           loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
+        />
+      );
+    case 'aionrs':
+      if (!conversation.extra?.workspace) return null;
+      return (
+        <AionrsPlatformChat
+          key={conversation.id}
+          conversation={conversation as TChatConversation & { type: 'aionrs' }}
+          isSideMode={isSideMode}
+          composerPrefix={composerPrefix}
         />
       );
     default:

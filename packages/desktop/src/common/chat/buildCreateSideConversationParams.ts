@@ -11,6 +11,7 @@ function resolveCreateType(parent: TChatConversation): ICreateConversationParams
   switch (parent.type) {
     case 'acp':
     case 'codex':
+    case 'gemini':
       return 'acp';
     case 'aionrs':
     case 'openclaw-gateway':
@@ -43,7 +44,8 @@ export function buildCreateSideConversationParams(
 
   if (type === 'acp') {
     const acpExtra = parentExtra as { backend?: string; agent_name?: string; agent_id?: string; cli_path?: string };
-    createExtra.backend = parent.type === 'codex' ? 'codex' : acpExtra.backend;
+    createExtra.backend =
+      parent.type === 'codex' ? 'codex' : parent.type === 'gemini' ? 'gemini' : acpExtra.backend;
     if (acpExtra.agent_name) createExtra.agent_name = acpExtra.agent_name;
     if (acpExtra.agent_id) createExtra.agent_id = acpExtra.agent_id;
     if (acpExtra.cli_path) createExtra.cli_path = acpExtra.cli_path;
